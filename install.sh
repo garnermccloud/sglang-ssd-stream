@@ -2,7 +2,8 @@
 set -eu
 
 REPOSITORY="garnermccloud/sglang-ssd-stream"
-SGLANG_COMMIT="3df8e1e7dbc5807696622afe2929b6c33c185ca3"
+RTX_SGLANG_COMMIT="3df8e1e7dbc5807696622afe2929b6c33c185ca3"
+SPARK_SGLANG_COMMIT="0a79825b7baa3e2aafd54e89097a5aba83d00b4e"
 FLASHINFER_VERSION="0.6.17"
 CUDA_NVCC_VERSION="13.0.88"
 CUDA_RUNTIME_VERSION="13.0.96"
@@ -15,11 +16,8 @@ fi
 
 ARCH="$(uname -m)"
 case "$ARCH" in
-    x86_64) ;;
-    aarch64)
-        echo "The DGX Spark release is awaiting hardware acceptance" >&2
-        exit 1
-        ;;
+    x86_64) SGLANG_COMMIT="$RTX_SGLANG_COMMIT" ;;
+    aarch64) SGLANG_COMMIT="$SPARK_SGLANG_COMMIT" ;;
     *)
         echo "sglang-ssd-stream does not have a wheel for $ARCH" >&2
         exit 1

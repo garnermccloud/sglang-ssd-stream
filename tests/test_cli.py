@@ -61,6 +61,37 @@ def test_explicit_context_overrides_profile_default(tmp_path):
     assert args[args.index("--context-length") + 1] == "131072"
 
 
+def test_dgx_spark_profile_matches_experimental_sglang_shape(tmp_path):
+    args = cli._profile_args(
+        cli.Hardware("aarch64", "NVIDIA GB10", 122_880),
+        tmp_path,
+        None,
+    )
+
+    assert args[args.index("--context-length") + 1] == "262144"
+    assert args[args.index("--max-total-tokens") + 1] == "262144"
+    assert args[args.index("--mem-fraction-static") + 1] == "0.85"
+    assert args[args.index("--kv-cache-dtype") + 1] == "bfloat16"
+    assert args[args.index("--chunked-prefill-size") + 1] == "8192"
+    assert args[args.index("--mamba-ssm-dtype") + 1] == "float32"
+    assert args[args.index("--speculative-num-steps") + 1] == "3"
+    assert args[args.index("--speculative-eagle-topk") + 1] == "1"
+    assert args[args.index("--speculative-num-draft-tokens") + 1] == "4"
+    assert "--disable-prefill-cuda-graph" in args
+    assert "--disable-cuda-graph" not in args
+
+
+def test_dgx_spark_profile_requires_full_unified_memory(tmp_path):
+    hardware = cli.Hardware("aarch64", "NVIDIA GB10", 64_000)
+
+    try:
+        cli._profile_args(hardware, tmp_path, None)
+    except RuntimeError as exc:
+        assert "no validated automatic profile" in str(exc)
+    else:
+        raise AssertionError("undersized GB10 was accepted as a DGX Spark")
+
+
 def test_serve_uses_own_python_environment(monkeypatch, tmp_path):
     _snapshot, cuda_home = _prepare_serve(monkeypatch, tmp_path)
     args = SimpleNamespace(

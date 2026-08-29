@@ -31,11 +31,13 @@ curl -LsSf https://raw.githubusercontent.com/garnermccloud/sglang-ssd-stream/mai
 ~/.local/bin/sglang-ssd-stream serve
 ```
 
-That starts an OpenAI-compatible API at `http://127.0.0.1:30000/v1` using a
-default 131K-context RTX profile. The model stays pinned to the downloaded
-revision until you choose to update it. SGLang compiles a few GPU-specific
-kernels on first launch with one build job, then reuses its cache. Existing
-system CUDA installations and additional SGLang settings are left alone.
+That starts an OpenAI-compatible API at `http://127.0.0.1:30000/v1`. Hardware
+detection selects the validated 131K-context RTX PRO 6000 profile or the
+experimental 262K-context DGX Spark profile. The model stays pinned to the
+downloaded revision until you choose to update it. SGLang compiles a few
+GPU-specific kernels on first launch with one build job, then reuses its cache.
+Existing system CUDA installations and additional SGLang settings are left
+alone.
 
 ```bash
 curl -s http://127.0.0.1:30000/v1/chat/completions \
@@ -109,7 +111,7 @@ The accepted RTX PRO 6000 configuration also passed:
 - restart reuse with the Ubuntu VM running;
 - no swap, OOM, restart, or host-memory growth.
 
-### DGX Spark
+### DGX Spark (experimental)
 
 | DGX Spark result | Value |
 | --- | ---: |
@@ -120,9 +122,14 @@ The accepted RTX PRO 6000 configuration also passed:
 | Normal RAM-loaded speed | Pending hardware run |
 | SSD Stream speed | Pending hardware run |
 
-The native reader supports Linux aarch64. After the Spark benchmark fills in
-these speed rows, the same CLI will detect DGX Spark and select its tested
-memory and context profile automatically.
+The Linux aarch64 wheel and automatic GB10 profile are included. It pins
+[SGLang's SM121 QSA implementation](https://github.com/sgl-project/sglang/pull/36845)
+and starts with 262K context, BF16 KV, FP32 model state, native MTP 3/1/4,
+decode CUDA graphs, and one request at a time. Upstream validated that shape on
+one DGX Spark with NVFP4 weights, the FP8 table on NVMe, long-context retrieval,
+structured tools, sequential requests, and concurrency. SSD Stream's complete
+Spark hardware acceptance and performance run is still pending, so the profile
+is experimental rather than validated.
 
 ## How it works
 
@@ -164,7 +171,7 @@ frequently used pages in reclaimable filesystem cache.
 | Prepared model | `garnermccloud/Qwen3.8-Flash-Next-NVFP4-SSD-Stream` |
 | SGLang | Upstream Flash-Next source with [QSA FP8 KV support](https://github.com/sgl-project/sglang/pull/36644), pinned to commit `3df8e1e7dbc5807696622afe2929b6c33c185ca3` |
 | Linux x86_64 / RTX PRO 6000 | Validated |
-| Linux aarch64 / DGX Spark | Hardware acceptance pending |
+| Linux aarch64 / DGX Spark | Experimental profile; hardware acceptance pending |
 | Table storage | FP8 and BF16 |
 | Tensor parallelism | Supported by the reader and adapter |
 

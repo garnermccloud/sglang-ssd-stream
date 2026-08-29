@@ -18,6 +18,7 @@ MODEL_REPO = "garnermccloud/Qwen3.8-Flash-Next-NVFP4-SSD-Stream"
 SERVED_MODEL = "Qwen3.8-Flash-Next-NVFP4-SSD-Stream"
 _STATE_VERSION = 1
 _RTX_DEFAULT_CONTEXT = 131_072
+_SPARK_DEFAULT_CONTEXT = 262_144
 
 
 @dataclass(frozen=True)
@@ -192,6 +193,14 @@ def _is_rtx_pro_6000(hardware: Hardware) -> bool:
     )
 
 
+def _is_dgx_spark(hardware: Hardware) -> bool:
+    return (
+        hardware.architecture in {"aarch64", "arm64"}
+        and "GB10" in hardware.gpu_name
+        and hardware.gpu_memory_mib >= 110_000
+    )
+
+
 def _rtx_pro_args(snapshot: Path, context: int) -> list[str]:
     return [
         "--trust-remote-code",
@@ -246,13 +255,66 @@ def _rtx_pro_args(snapshot: Path, context: int) -> list[str]:
     ]
 
 
+def _dgx_spark_args(snapshot: Path, context: int) -> list[str]:
+    return [
+        "--trust-remote-code",
+        "--model-path",
+        str(snapshot),
+        "--served-model-name",
+        SERVED_MODEL,
+        "--quantization",
+        "modelopt_fp4",
+        "--fp4-gemm-backend",
+        "flashinfer_cutlass",
+        "--kv-cache-dtype",
+        "bfloat16",
+        "--page-size",
+        "64",
+        "--mamba-radix-cache-strategy",
+        "extra_buffer_lazy",
+        "--mamba-track-interval",
+        "64",
+        "--mamba-ssm-dtype",
+        "float32",
+        "--max-mamba-cache-size",
+        "5",
+        "--chunked-prefill-size",
+        "8192",
+        "--max-running-requests",
+        "1",
+        "--cuda-graph-max-bs-decode",
+        "1",
+        "--disable-prefill-cuda-graph",
+        "--context-length",
+        str(context),
+        "--max-total-tokens",
+        str(context),
+        "--mem-fraction-static",
+        "0.85",
+        "--speculative-algorithm",
+        "NEXTN",
+        "--speculative-draft-model-path",
+        str(snapshot / "mtp"),
+        "--speculative-num-steps",
+        "3",
+        "--speculative-eagle-topk",
+        "1",
+        "--speculative-num-draft-tokens",
+        "4",
+        "--allow-auto-truncate",
+        "--enable-multimodal",
+        "--reasoning-parser",
+        "auto",
+        "--tool-call-parser",
+        "auto",
+    ]
+
+
 def _profile_args(hardware: Hardware, snapshot: Path, context: int | None) -> list[str]:
     if _is_rtx_pro_6000(hardware):
         return _rtx_pro_args(snapshot, context or _RTX_DEFAULT_CONTEXT)
-    if hardware.architecture in {"aarch64", "arm64"} and "GB10" in hardware.gpu_name:
-        raise RuntimeError(
-            "the DGX Spark profile is awaiting hardware acceptance and is not released yet"
-        )
+    if _is_dgx_spark(hardware):
+        return _dgx_spark_args(snapshot, context or _SPARK_DEFAULT_CONTEXT)
     raise RuntimeError(
         f"no validated automatic profile for {hardware.gpu_name} "
         f"({hardware.gpu_memory_mib} MiB, {hardware.architecture})"
