@@ -22,7 +22,7 @@ jobs:
       - uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --locked --out dist --compatibility manylinux_2_28
+          args: --release --locked --out dist
           manylinux: "2_28"
       - uses: actions/upload-artifact@v4
         with:
