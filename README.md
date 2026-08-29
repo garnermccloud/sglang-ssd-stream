@@ -169,7 +169,8 @@ frequently used pages in reclaimable filesystem cache.
 | Component | Status |
 | --- | --- |
 | Prepared model | `garnermccloud/Qwen3.8-Flash-Next-NVFP4-SSD-Stream` |
-| SGLang | Upstream Flash-Next source with [QSA FP8 KV support](https://github.com/sgl-project/sglang/pull/36644), pinned to commit `3df8e1e7dbc5807696622afe2929b6c33c185ca3` |
+| SGLang on RTX PRO 6000 | Upstream Flash-Next source with [QSA FP8 KV support](https://github.com/sgl-project/sglang/pull/36644), pinned to commit `3df8e1e7dbc5807696622afe2929b6c33c185ca3` |
+| SGLang on DGX Spark | Upstream Flash-Next source with the [SM121 QSA kernel](https://github.com/sgl-project/sglang/pull/36845), pinned to commit `0a79825b7baa3e2aafd54e89097a5aba83d00b4e` |
 | Linux x86_64 / RTX PRO 6000 | Validated |
 | Linux aarch64 / DGX Spark | Experimental profile; hardware acceptance pending |
 | Table storage | FP8 and BF16 |
