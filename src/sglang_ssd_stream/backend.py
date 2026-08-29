@@ -242,13 +242,14 @@ class SSDStreamEmbedding(VocabParallelEmbedding):
         logger.info(
             "SSD Stream enabled: backing=%s sha256=%s size=%.2f GiB "
             "staging_slots=%d staging_per_slot=%.2f MiB capacity=%d rows "
-            "registered_pool=32.00 MiB",
+            "page_pool=32.00 MiB registered_buffers=%s",
             self.backing_path,
             self._table_sha256,
             self._table_nbytes / 1024**3,
             _STAGING_SLOTS,
             self._staging_capacity_rows * self._row_nbytes / 1024**2,
             self._staging_capacity_rows,
+            self._reader.registered_buffers,
         )
 
     def allocate_output(

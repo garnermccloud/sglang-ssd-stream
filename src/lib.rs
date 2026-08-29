@@ -130,6 +130,7 @@ struct ReaderState {
     tp_end: i64,
     ring: IoUring,
     pool: AlignedPool,
+    registered_buffers: bool,
     queue_depth: usize,
     max_batch_pages: usize,
     measure_physical_io: bool,
@@ -181,18 +182,26 @@ impl ReaderState {
             iov_base: pool.address.as_ptr().cast(),
             iov_len: pool.len,
         }];
-        unsafe {
-            ring.submitter()
-                .register_buffers(&registered)
-                .map_err(|error| {
-                    io::Error::new(
-                        error.kind(),
-                        format!(
-                            "failed to register the {DEFAULT_PAGE_POOL_MIB} MiB io_uring page pool: {error}"
-                        ),
-                    )
-                })?;
-        }
+        let registered_buffers = match unsafe { ring.submitter().register_buffers(&registered) } {
+            Ok(()) => true,
+            Err(error)
+                if matches!(
+                    error.raw_os_error(),
+                    Some(code)
+                        if code == libc::ENOMEM || code == libc::EPERM || code == libc::EAGAIN
+                ) =>
+            {
+                false
+            }
+            Err(error) => {
+                return Err(io::Error::new(
+                    error.kind(),
+                    format!(
+                        "failed to register the {DEFAULT_PAGE_POOL_MIB} MiB io_uring page pool: {error}"
+                    ),
+                ));
+            }
+        };
 
         Ok(Self {
             file,
@@ -203,6 +212,7 @@ impl ReaderState {
             tp_end,
             ring,
             pool,
+            registered_buffers,
             queue_depth: DEFAULT_QUEUE_DEPTH as usize,
             max_batch_pages: DEFAULT_MAX_BATCH_PAGES,
             measure_physical_io,
@@ -368,14 +378,24 @@ impl ReaderState {
                 let mut submission = self.ring.submission();
                 for page_slot in wave_start..wave_end {
                     let group = self.groups[batch_start + page_slot];
-                    let entry = opcode::ReadFixed::new(
-                        types::Fd(self.file.as_raw_fd()),
-                        self.pool.page_ptr(page_slot),
-                        PAGE_SIZE as u32,
-                        0,
-                    )
-                    .offset(group.page_id * PAGE_SIZE as u64)
-                    .build()
+                    let entry = if self.registered_buffers {
+                        opcode::ReadFixed::new(
+                            types::Fd(self.file.as_raw_fd()),
+                            self.pool.page_ptr(page_slot),
+                            PAGE_SIZE as u32,
+                            0,
+                        )
+                        .offset(group.page_id * PAGE_SIZE as u64)
+                        .build()
+                    } else {
+                        opcode::Read::new(
+                            types::Fd(self.file.as_raw_fd()),
+                            self.pool.page_ptr(page_slot),
+                            PAGE_SIZE as u32,
+                        )
+                        .offset(group.page_id * PAGE_SIZE as u64)
+                        .build()
+                    }
                     .user_data(page_slot as u64);
                     unsafe {
                         submission
@@ -435,7 +455,9 @@ impl ReaderState {
 
 impl Drop for ReaderState {
     fn drop(&mut self) {
-        let _ = self.ring.submitter().unregister_buffers();
+        if self.registered_buffers {
+            let _ = self.ring.submitter().unregister_buffers();
+        }
     }
 }
 
@@ -443,6 +465,8 @@ impl Drop for ReaderState {
 struct PageReader {
     state: Mutex<ReaderState>,
     row_bytes: usize,
+    #[pyo3(get)]
+    registered_buffers: bool,
 }
 
 #[pymethods]
@@ -473,9 +497,11 @@ impl PageReader {
             measure_physical_io,
         )
         .map_err(os_error)?;
+        let registered_buffers = state.registered_buffers;
         Ok(Self {
             state: Mutex::new(state),
             row_bytes,
+            registered_buffers,
         })
     }
 

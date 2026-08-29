@@ -50,6 +50,7 @@ def test_native_reader_preserves_rows_and_files(tmp_path):
     marker_hash = hashlib.sha256(marker_path.read_bytes()).digest()
 
     reader = _reader(table_path)
+    assert isinstance(reader.registered_buffers, bool)
     stats = reader.gather(ids, output)
 
     np.testing.assert_array_equal(output, _expected(rows, ids))
