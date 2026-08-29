@@ -16,7 +16,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [x86_64, aarch64]
+        include:
+          - target: x86_64
+            platform: amd64
+          - target: aarch64
+            platform: arm64
     steps:
       - uses: actions/checkout@v4
       - uses: PyO3/maturin-action@v1
@@ -24,6 +28,19 @@ jobs:
           target: ${{ matrix.target }}
           args: --release --locked --out dist -i python3.12
           manylinux: "2_28"
+      - if: matrix.target == 'aarch64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - name: Test wheel
+        run: |
+          docker run --rm \
+            --platform linux/${{ matrix.platform }} \
+            --security-opt seccomp=unconfined \
+            -v "$PWD:/work" \
+            -w /work \
+            python:3.12-bookworm \
+            sh -c 'pip install -q dist/*.whl pytest && pytest -q tests/test_native_reader.py tests/test_cli.py tests/test_config.py'
       - uses: actions/upload-artifact@v4
         with:
           name: wheel-${{ matrix.target }}
