@@ -38,7 +38,7 @@ jobs:
             -v "$PWD:/work" \
             -w /work \
             python:3.12-bookworm \
-            sh -c 'pip install -q dist/*.whl pytest && pytest -q tests/test_native_reader.py tests/test_cli.py tests/test_config.py'
+            sh -c 'pip install -q dist/*.whl pytest && pytest -q tests/test_native_reader.py tests/test_cli.py tests/test_config.py tests/test_offload.py'
       - uses: actions/upload-artifact@v4
         with:
           name: wheel-${{ matrix.target }}

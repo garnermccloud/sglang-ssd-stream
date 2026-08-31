@@ -18,12 +18,12 @@ The model and extension are packaged to work together:
 
 ## Start serving
 
-Use Linux with a supported Blackwell GPU, a local SSD, and a standard C++
-compiler. The first launch downloads the prepared model, so allow about 140 GiB
-of disk space. Installation creates a user-owned environment with the tested
-upstream SGLang commit, matching NVIDIA and FlashInfer packages, and the SSD
-Stream plugin. It does not alter the NVIDIA driver, system CUDA, system Python,
-or operating-system packages. The native SSD reader is prebuilt, so no Rust
+Use Linux with one NVIDIA GPU, a local SSD, and a standard C++ compiler. The
+first launch downloads the prepared model, so allow about 140 GiB of disk
+space. Installation creates a user-owned environment with the tested upstream
+SGLang commit, matching NVIDIA and FlashInfer packages, and the SSD Stream
+plugin. It does not alter the NVIDIA driver, system CUDA, system Python, or
+operating-system packages. The native SSD reader is prebuilt, so no Rust
 toolchain is required.
 
 ```bash
@@ -32,12 +32,12 @@ curl -LsSf https://raw.githubusercontent.com/garnermccloud/sglang-ssd-stream/mai
 ```
 
 That starts an OpenAI-compatible API at `http://127.0.0.1:30000/v1`. Hardware
-detection selects the validated 131K-context RTX PRO 6000 profile or the
-experimental 262K-context DGX Spark profile. The model stays pinned to the
-downloaded revision until you choose to update it. SGLang compiles a few
-GPU-specific kernels on first launch with one build job, then reuses its cache.
-Existing system CUDA installations and additional SGLang settings are left
-alone.
+detection selects the validated 131K-context RTX PRO 6000 profile, the
+experimental 262K-context DGX Spark profile, or a conservative CPU-offload
+profile for smaller Linux x86_64 GPUs. The model stays pinned to the downloaded
+revision until you choose to update it. SGLang compiles a few GPU-specific
+kernels on first launch with one build job, then reuses its cache. Existing
+system CUDA installations and additional SGLang settings are left alone.
 
 ```bash
 curl -s http://127.0.0.1:30000/v1/chat/completions \
@@ -131,6 +131,36 @@ structured tools, sequential requests, and concurrency. SSD Stream's complete
 Spark hardware acceptance and performance run is still pending, so the profile
 is experimental rather than validated.
 
+### Smaller NVIDIA GPUs (experimental)
+
+RTX 3090, 4090, and 5090-class systems can run the same prepared NVFP4 model by
+keeping part of the ordinary model weights in system RAM. SSD Stream still
+serves the separate 47.68 GiB lookup table directly from SSD.
+
+The launcher detects a smaller NVIDIA GPU, selects the compatible SGLang kernel,
+and starts with a 16K context. It keeps the non-MoE core on the GPU and uses
+SGLang's grouped offloader for every large expert block, prefetching one block
+at a time.
+
+| GPU memory | Example GPUs | Host memory target |
+| ---: | --- | ---: |
+| 32 GB | RTX 5090 | 128 GB |
+| 24 GB | RTX 3090, RTX 4090 | 128 GB |
+
+Use the normal command:
+
+```bash
+sglang-ssd-stream serve
+```
+
+The portable profile requires Linux x86_64, at least 24 GB of GPU memory,
+compute capability 8.0 or newer, and about 80 GiB of available host memory at
+startup. It disables MTP and CUDA graphs because expert weights move across
+PCIe for every token, so it will be much slower than the full-GPU RTX PRO
+profile. The same grouped path produced exact text and structured tool calls in
+a partial-offload hardware simulation; complete 24 and 32 GB acceptance and
+performance measurements remain pending.
+
 ## How it works
 
 Qwen3.8 Flash-Next includes a 47.68 GiB predictive lookup embedding (PLE)
@@ -173,6 +203,7 @@ frequently used pages in reclaimable filesystem cache.
 | SGLang on DGX Spark | Upstream Flash-Next source with the [SM121 QSA kernel](https://github.com/sgl-project/sglang/pull/36845), pinned to commit `0a79825b7baa3e2aafd54e89097a5aba83d00b4e` |
 | Linux x86_64 / RTX PRO 6000 | Validated |
 | Linux aarch64 / DGX Spark | Experimental profile; hardware acceptance pending |
+| Linux x86_64 / SM80+ with CPU offload | Experimental; 24 and 32 GB hardware acceptance pending |
 | Table storage | FP8 and BF16 |
 | Tensor parallelism | Supported by the reader and adapter |
 

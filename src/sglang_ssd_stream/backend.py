@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import math
-import mmap
-import os
 import threading
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import nullcontext
@@ -179,38 +176,6 @@ class SSDStreamEmbedding(VocabParallelEmbedding):
         self.backing_path = str(table.path)
         self._table_sha256 = table.sha256
         self._table_nbytes = table.nbytes
-        local_offset = (tp_start - table.row_start) * self._row_nbytes
-        local_nbytes = math.prod(shape) * self._element_size
-        map_offset = local_offset - (local_offset % mmap.ALLOCATIONGRANULARITY)
-        map_delta = local_offset - map_offset
-        map_length = map_delta + local_nbytes
-
-        self._ple_file_fd = os.open(self.backing_path, os.O_RDONLY | os.O_CLOEXEC)
-        os.posix_fadvise(
-            self._ple_file_fd,
-            local_offset,
-            local_nbytes,
-            os.POSIX_FADV_RANDOM,
-        )
-        self._ple_file_mmap = mmap.mmap(
-            self._ple_file_fd,
-            map_length,
-            flags=mmap.MAP_PRIVATE,
-            prot=mmap.PROT_READ | mmap.PROT_WRITE,
-            offset=map_offset,
-        )
-        self._ple_file_mmap.madvise(mmap.MADV_RANDOM)
-        file_data = torch.frombuffer(
-            self._ple_file_mmap,
-            dtype=self._storage_dtype,
-            count=math.prod(shape),
-            offset=map_delta,
-        ).reshape(shape)
-        cpu_weight = nn.Parameter(file_data, requires_grad=False)
-        for name, value in vars(source_weight).items():
-            setattr(cpu_weight, name, value)
-        cpu_weight.weight_loader = self.weight_loader
-        self.register_parameter("weight", cpu_weight)
         self.register_buffer("weight_scale", embedding.weight_scale, persistent=True)
         del embedding.weight
 

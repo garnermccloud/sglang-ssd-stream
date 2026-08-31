@@ -24,6 +24,19 @@ def _embedding(dtype: torch.dtype, rows: int = 1024, width: int = 160):
     return embedding
 
 
+def _meta_embedding(dtype: torch.dtype, rows: int = 1024, width: int = 160):
+    with torch.device("meta"):
+        embedding = VocabParallelEmbedding(
+            rows,
+            width,
+            params_dtype=dtype,
+            org_num_embeddings=rows,
+            enable_tp=False,
+        )
+    embedding.register_buffer("weight_scale", torch.ones((), dtype=torch.float32))
+    return embedding
+
+
 def _source(dtype: torch.dtype, rows: int = 1024, width: int = 160):
     if dtype == torch.float8_e4m3fn:
         raw = (
@@ -73,6 +86,13 @@ def _run_case(dtype: torch.dtype) -> None:
         )
         config = load_manifest(manifest)
         staged = SSDStreamEmbedding(_embedding(dtype), config=config, ple_layer_index=0)
+        assert not list(staged.parameters())
+        assert not hasattr(staged, "weight")
+
+        meta_staged = SSDStreamEmbedding(
+            _meta_embedding(dtype), config=config, ple_layer_index=0
+        )
+        assert not list(meta_staged.parameters())
 
         ids = torch.tensor([0, 127, 0, 511, 900], device="cuda")
         expected = source[ids.cpu()].to(torch.bfloat16)
@@ -124,6 +144,9 @@ def _run_case(dtype: torch.dtype) -> None:
 
         reused = SSDStreamEmbedding(_embedding(dtype), config=config, ple_layer_index=0)
         torch.testing.assert_close(reused.gather(ids).cpu(), expected, rtol=0, atol=0)
+        torch.testing.assert_close(
+            meta_staged.gather(ids).cpu(), expected, rtol=0, atol=0
+        )
 
 
 if __name__ == "__main__":

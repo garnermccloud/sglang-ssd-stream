@@ -26,11 +26,20 @@ SUPPORTED_SGLANG = {
             "sglang.srt.models.qwen4_exp": (
                 "f406977eb2373937393241f453477867f7dc943bd4839216db8fe66fa9f921d8"
             ),
+            "sglang.srt.models.qwen3_5": (
+                "f7e52f647d8e3dd8c980ae170569585ee118c782df055b21b1e93bbc28b1f9e8"
+            ),
             "sglang.srt.model_executor.runner.decode_cuda_graph_runner": (
                 "3554b172d18be110e32b6140ac97154025962daceca454f417dde4e15862b74d"
             ),
             "sglang.srt.server_args": (
                 "177600230a33a7badf94f49c3dff7d5aae3762f03a1152c8ea62302d188734d8"
+            ),
+            "sglang.srt.utils.offloader": (
+                "1d89240584d56990174e22f31f1dd89d8585075607e14f6491a943dbd44aabed"
+            ),
+            "sglang.srt.utils.common": (
+                "d656850e662374ff8405b2b71db1617bd8721803d9ff07e50c4bab708357eb24"
             ),
         },
     ),
@@ -55,11 +64,20 @@ SUPPORTED_SGLANG = {
             "sglang.srt.models.qwen4_exp": (
                 "f406977eb2373937393241f453477867f7dc943bd4839216db8fe66fa9f921d8"
             ),
+            "sglang.srt.models.qwen3_5": (
+                "f7e52f647d8e3dd8c980ae170569585ee118c782df055b21b1e93bbc28b1f9e8"
+            ),
             "sglang.srt.model_executor.runner.decode_cuda_graph_runner": (
                 "3554b172d18be110e32b6140ac97154025962daceca454f417dde4e15862b74d"
             ),
             "sglang.srt.server_args": (
                 "177600230a33a7badf94f49c3dff7d5aae3762f03a1152c8ea62302d188734d8"
+            ),
+            "sglang.srt.utils.offloader": (
+                "1d89240584d56990174e22f31f1dd89d8585075607e14f6491a943dbd44aabed"
+            ),
+            "sglang.srt.utils.common": (
+                "d656850e662374ff8405b2b71db1617bd8721803d9ff07e50c4bab708357eb24"
             ),
         },
     ),
@@ -102,6 +120,14 @@ def register() -> None:
         "sglang.srt.server_args.ServerArgs.from_cli_args",
         configure_cli,
         HookType.BEFORE,
+    )
+
+    from .offload import around_make_layers
+
+    HookRegistry.register(
+        "sglang.srt.models.qwen3_5.make_layers",
+        around_make_layers,
+        HookType.AROUND,
     )
 
     from .qwen4 import Qwen4PLELayer, around_load_weights

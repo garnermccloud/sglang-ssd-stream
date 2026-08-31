@@ -158,7 +158,7 @@ def _resolve_artifact(model_path: str, revision: str | None) -> tuple[Path, str 
 
 
 def configure_cli(*args, **kwargs):
-    """Resolve the immutable prepared artifact and enable PLE offload."""
+    """Resolve the immutable prepared artifact and enable SSD streaming."""
     namespace = next(
         (value for value in reversed(args) if isinstance(value, argparse.Namespace)),
         None,
@@ -170,9 +170,40 @@ def configure_cli(*args, **kwargs):
     config = load_manifest(manifest_path)
     if commit is not None:
         namespace.revision = commit
-    namespace.ple_offload_embedding = True
+    namespace.ple_offload_embedding = False
+    if namespace.cpu_offload_gb > 0:
+        raise ValueError(
+            "per-parameter CPU offload is not safe for this model; use grouped offload"
+        )
+    cpu_offload = namespace.offload_group_size > 0
+    if cpu_offload:
+        decode_graph_disabled = (
+            namespace.disable_cuda_graph
+            or namespace.disable_decode_cuda_graph
+            or namespace.cuda_graph_backend_decode == "disabled"
+        )
+        prefill_graph_disabled = (
+            namespace.disable_cuda_graph
+            or namespace.disable_prefill_cuda_graph
+            or namespace.cuda_graph_backend_prefill == "disabled"
+        )
+        if not decode_graph_disabled or not prefill_graph_disabled:
+            raise ValueError(
+                "SSD Stream CPU offload requires disabled prefill and decode CUDA graphs"
+            )
+        if namespace.cuda_graph_backend_decode not in (None, "disabled"):
+            raise ValueError("SSD Stream CPU offload cannot enable decode CUDA graphs")
+        if namespace.cuda_graph_backend_prefill not in (None, "disabled"):
+            raise ValueError("SSD Stream CPU offload cannot enable prefill CUDA graphs")
+        if namespace.speculative_algorithm is not None:
+            raise ValueError("SSD Stream CPU offload does not support MTP")
+        if namespace.startup_weight_load_mode == "overlap":
+            raise ValueError("SSD Stream CPU offload does not support overlap loading")
     os.environ[_RUNTIME_CONFIG_ENV] = json.dumps(
-        {"manifest_path": str(config.manifest_path)},
+        {
+            "manifest_path": str(config.manifest_path),
+            "cpu_offload": cpu_offload,
+        },
         separators=(",", ":"),
     )
     return args, kwargs
@@ -185,3 +216,11 @@ def get_config() -> SSDStreamConfig:
     except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
         raise RuntimeError("invalid internal SSD Stream runtime configuration") from exc
     return load_manifest(manifest_path)
+
+
+def grouped_cpu_offload_enabled() -> bool:
+    try:
+        values = json.loads(os.environ[_RUNTIME_CONFIG_ENV])
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise RuntimeError("invalid internal SSD Stream runtime configuration") from exc
+    return values.get("cpu_offload") is True

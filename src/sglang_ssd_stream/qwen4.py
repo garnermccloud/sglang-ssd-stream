@@ -32,20 +32,29 @@ class Qwen4PLELayer(qwen4.Qwen4ExpPLELayer):
     """Add SSD staging at SGLang's existing decoder/PLE prefetch boundary."""
 
     def __init__(self, *args, ple_layer_index: int = 0, **kwargs) -> None:
-        original_embedding = qwen4.Qwen4ExpPinnedHostEmbedding
+        config = args[0] if args else kwargs["config"]
+        original_embedding = qwen4.VocabParallelEmbedding
+        original_offload = config.ple_offload_embedding
 
-        def build_ssd_embedding(embedding):
-            return SSDStreamEmbedding(
-                embedding,
-                config=get_config(),
-                ple_layer_index=ple_layer_index,
-            )
+        def build_meta_embedding(*embedding_args, **embedding_kwargs):
+            with torch.device("meta"):
+                return original_embedding(*embedding_args, **embedding_kwargs)
 
-        qwen4.Qwen4ExpPinnedHostEmbedding = build_ssd_embedding
+        qwen4.VocabParallelEmbedding = build_meta_embedding
+        config.ple_offload_embedding = False
         try:
             super().__init__(*args, ple_layer_index=ple_layer_index, **kwargs)
         finally:
-            qwen4.Qwen4ExpPinnedHostEmbedding = original_embedding
+            qwen4.VocabParallelEmbedding = original_embedding
+            config.ple_offload_embedding = original_offload
+
+        self.ple_embedding.ngram_embedding = SSDStreamEmbedding(
+            self.ple_embedding.ngram_embedding,
+            config=get_config(),
+            ple_layer_index=ple_layer_index,
+        )
+        if self._prefetch_stream is None:
+            self._prefetch_stream = torch.cuda.Stream()
 
         if not isinstance(self.ple_embedding.ngram_embedding, SSDStreamEmbedding):
             raise TypeError(
@@ -190,7 +199,6 @@ def around_load_weights(
     original_fn, model, weights: Iterable[tuple[str, torch.Tensor]]
 ):
     """Reject embedded PLE shards and leave ordinary model loading upstream."""
-
     def filtered_weights():
         for original_name, loaded_weight in weights:
             name = original_name.replace("model.language_model.", "model.")

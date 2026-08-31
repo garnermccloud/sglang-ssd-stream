@@ -98,14 +98,57 @@ def test_cli_pins_huggingface_snapshot_without_changing_table_identity(
         model_path="garnermccloud/Qwen3.8-Flash-Next-NVFP4-SSD-Stream",
         revision=None,
         ple_offload_embedding=False,
+        cpu_offload_gb=0,
+        offload_group_size=-1,
+        disable_cuda_graph=False,
+        disable_decode_cuda_graph=False,
+        disable_prefill_cuda_graph=False,
+        cuda_graph_backend_decode=None,
+        cuda_graph_backend_prefill=None,
+        speculative_algorithm=None,
+        startup_weight_load_mode="normal",
     )
 
     config.configure_cli(namespace)
 
     resolved = config.get_config()
     assert namespace.revision == commit
-    assert namespace.ple_offload_embedding is True
+    assert namespace.ple_offload_embedding is False
+    assert config.grouped_cpu_offload_enabled() is False
     assert resolved.table_for_layer(0).sha256 == "1" * 64
+
+
+def test_cpu_offload_requires_graphs_and_mtp_disabled(monkeypatch, tmp_path):
+    monkeypatch.delenv("SGLANG_SSD_STREAM_CONFIG", raising=False)
+    _, manifest, _ = _artifact(tmp_path)
+    monkeypatch.setattr(
+        config,
+        "_resolve_artifact",
+        lambda model_path, revision: (manifest, "a" * 40),
+    )
+    namespace = Namespace(
+        model_path="prepared",
+        revision=None,
+        ple_offload_embedding=True,
+        cpu_offload_gb=0,
+        offload_group_size=1,
+        disable_cuda_graph=False,
+        disable_decode_cuda_graph=False,
+        disable_prefill_cuda_graph=False,
+        cuda_graph_backend_decode="disabled",
+        cuda_graph_backend_prefill="disabled",
+        speculative_algorithm=None,
+        startup_weight_load_mode="normal",
+    )
+
+    config.configure_cli(namespace)
+
+    assert namespace.ple_offload_embedding is False
+    assert config.grouped_cpu_offload_enabled() is True
+
+    namespace.speculative_algorithm = "NEXTN"
+    with pytest.raises(ValueError, match="does not support MTP"):
+        config.configure_cli(namespace)
 
 
 def test_manifest_rejects_wrong_table_size(tmp_path):

@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "sglang-ssd-stream"
-version = "0.1.0"
+version = "0.2.0"
 description = "Free 48 GB of RAM while preserving Qwen3.8 Flash-Next serving speed"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"

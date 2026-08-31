@@ -19,6 +19,10 @@ SERVED_MODEL = "Qwen3.8-Flash-Next-NVFP4-SSD-Stream"
 _STATE_VERSION = 1
 _RTX_DEFAULT_CONTEXT = 131_072
 _SPARK_DEFAULT_CONTEXT = 262_144
+_PORTABLE_DEFAULT_CONTEXT = 16_384
+_MIN_PORTABLE_GPU_MIB = 24_000
+_EXPERT_OFFLOAD_GIB = 64
+_HOST_RUNTIME_RESERVE_GIB = 16
 
 
 @dataclass(frozen=True)
@@ -26,6 +30,7 @@ class Hardware:
     architecture: str
     gpu_name: str
     gpu_memory_mib: int
+    compute_capability: tuple[int, int]
 
 
 def _replace_symlink(link: Path, target: Path) -> None:
@@ -165,7 +170,7 @@ def _pinned_revision(data_dir: Path) -> str:
 def _detect_hardware() -> Hardware:
     command = [
         "nvidia-smi",
-        "--query-gpu=name,memory.total",
+        "--query-gpu=name,memory.total,compute_cap",
         "--format=csv,noheader,nounits",
     ]
     try:
@@ -178,11 +183,12 @@ def _detect_hardware() -> Hardware:
             f"automatic serving currently expects one GPU, found {len(gpus)}"
         )
     try:
-        name, memory = gpus[0].rsplit(",", 1)
+        name, memory, capability = [part.strip() for part in gpus[0].rsplit(",", 2)]
         memory_mib = int(memory.strip())
+        major, minor = (int(part) for part in capability.split(".", 1))
     except ValueError as exc:
         raise RuntimeError(f"cannot parse nvidia-smi output: {gpus[0]}") from exc
-    return Hardware(platform.machine(), name.strip(), memory_mib)
+    return Hardware(platform.machine(), name, memory_mib, (major, minor))
 
 
 def _is_rtx_pro_6000(hardware: Hardware) -> bool:
@@ -310,26 +316,140 @@ def _dgx_spark_args(snapshot: Path, context: int) -> list[str]:
     ]
 
 
-def _profile_args(hardware: Hardware, snapshot: Path, context: int | None) -> list[str]:
+def _supports_portable_nvfp4(hardware: Hardware) -> bool:
+    return (
+        hardware.architecture == "x86_64"
+        and (8, 0) <= hardware.compute_capability < (13, 0)
+    )
+
+
+def _portable_args(
+    hardware: Hardware,
+    snapshot: Path,
+    context: int,
+) -> list[str]:
+    kv_dtype = (
+        "fp8_e4m3" if hardware.compute_capability >= (10, 0) else "bfloat16"
+    )
+    args = [
+        "--trust-remote-code",
+        "--model-path",
+        str(snapshot),
+        "--served-model-name",
+        SERVED_MODEL,
+        "--quantization",
+        "modelopt_fp4",
+        "--kv-cache-dtype",
+        kv_dtype,
+        "--page-size",
+        "64",
+        "--mamba-radix-cache-strategy",
+        "extra_buffer_lazy",
+        "--mamba-track-interval",
+        "64",
+        "--mamba-ssm-dtype",
+        "float32",
+        "--max-mamba-cache-size",
+        "4",
+        "--chunked-prefill-size",
+        "1024",
+        "--max-running-requests",
+        "1",
+        "--context-length",
+        str(context),
+        "--max-total-tokens",
+        str(context),
+        "--mem-fraction-static",
+        "0.80",
+        "--cuda-graph-backend-decode",
+        "disabled",
+        "--cuda-graph-backend-prefill",
+        "disabled",
+        "--offload-group-size",
+        "1",
+        "--offload-num-in-group",
+        "1",
+        "--offload-prefetch-step",
+        "1",
+        "--offload-mode",
+        "cpu",
+        "--allow-auto-truncate",
+        "--enable-multimodal",
+        "--reasoning-parser",
+        "auto",
+        "--tool-call-parser",
+        "qwen3_coder",
+    ]
+    return args
+
+
+def _profile_args(
+    hardware: Hardware,
+    snapshot: Path,
+    context: int | None,
+) -> list[str]:
     if _is_rtx_pro_6000(hardware):
         return _rtx_pro_args(snapshot, context or _RTX_DEFAULT_CONTEXT)
     if _is_dgx_spark(hardware):
         return _dgx_spark_args(snapshot, context or _SPARK_DEFAULT_CONTEXT)
+    if _supports_portable_nvfp4(hardware):
+        if hardware.gpu_memory_mib < _MIN_PORTABLE_GPU_MIB:
+            raise RuntimeError(
+                "the grouped CPU-offload profile requires at least 24 GiB of GPU memory"
+            )
+        return _portable_args(
+            hardware,
+            snapshot,
+            context or _PORTABLE_DEFAULT_CONTEXT,
+        )
     raise RuntimeError(
-        f"no validated automatic profile for {hardware.gpu_name} "
+        f"no automatic profile for {hardware.gpu_name} "
         f"({hardware.gpu_memory_mib} MiB, {hardware.architecture})"
     )
+
+
+def _available_host_memory_gib() -> float:
+    try:
+        for line in Path("/proc/meminfo").read_text(encoding="utf-8").splitlines():
+            if line.startswith("MemAvailable:"):
+                return int(line.split()[1]) / 1024**2
+    except (OSError, ValueError, IndexError) as exc:
+        raise RuntimeError("cannot determine available host memory") from exc
+    raise RuntimeError("cannot determine available host memory")
+
+
+def _require_host_memory(grouped_offload: bool) -> None:
+    if not grouped_offload:
+        return
+    available = _available_host_memory_gib()
+    required = _EXPERT_OFFLOAD_GIB + _HOST_RUNTIME_RESERVE_GIB
+    if available < required:
+        raise RuntimeError(
+            f"CPU offload needs about {required} GiB available host memory; "
+            f"only {available:.1f} GiB is available"
+        )
 
 
 def _serve(args: argparse.Namespace) -> None:
     _require_compiler()
     data_dir = _data_dir(args.data_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
+    hardware = _detect_hardware()
+    grouped_offload = (
+        _supports_portable_nvfp4(hardware)
+        and not _is_rtx_pro_6000(hardware)
+        and not _is_dgx_spark(hardware)
+    )
+    _require_host_memory(grouped_offload)
     revision = _pinned_revision(data_dir)
     snapshot = _download_model(data_dir, revision)
-    hardware = _detect_hardware()
+    profile_args = _profile_args(
+        hardware,
+        snapshot,
+        args.context,
+    )
     command = [sys.executable, "-m", "sglang.launch_server"]
-    command.extend(_profile_args(hardware, snapshot, args.context))
+    command.extend(profile_args)
     command.extend(["--host", args.host, "--port", str(args.port)])
     if args.api_key:
         command.extend(["--api-key", args.api_key])
@@ -340,6 +460,13 @@ def _serve(args: argparse.Namespace) -> None:
 
     print("Free 48 GB of RAM. Keep the speed.", flush=True)
     print(f"GPU: {hardware.gpu_name}", flush=True)
+    print(
+        "Compute capability: "
+        f"{hardware.compute_capability[0]}.{hardware.compute_capability[1]}",
+        flush=True,
+    )
+    if grouped_offload:
+        print("CPU expert offload: enabled (experimental)", flush=True)
     print(f"Model: {MODEL_REPO}@{revision[:12]}", flush=True)
     print(f"Data: {data_dir}", flush=True)
     print(f"API: http://{args.host}:{args.port}/v1", flush=True)

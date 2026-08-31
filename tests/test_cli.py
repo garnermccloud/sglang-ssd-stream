@@ -1,10 +1,13 @@
 import sys
 from types import SimpleNamespace
 
+import pytest
+
 from sglang_ssd_stream import cli
 
 
 def _prepare_serve(monkeypatch, tmp_path):
+    monkeypatch.delenv("CUDA_HOME", raising=False)
     snapshot = tmp_path / "snapshot"
     snapshot.mkdir()
     cuda_home = tmp_path / "cuda"
@@ -16,7 +19,9 @@ def _prepare_serve(monkeypatch, tmp_path):
     monkeypatch.setattr(
         cli,
         "_detect_hardware",
-        lambda: cli.Hardware("x86_64", "RTX PRO 6000 Blackwell", 97_887),
+        lambda: cli.Hardware(
+            "x86_64", "RTX PRO 6000 Blackwell", 97_887, (12, 0)
+        ),
     )
     return snapshot, cuda_home
 
@@ -36,7 +41,9 @@ def test_model_revision_stays_pinned_across_software_runs(monkeypatch, tmp_path)
 
 def test_rtx_profile_uses_stable_context_and_native_mtp(tmp_path):
     args = cli._profile_args(
-        cli.Hardware("x86_64", "NVIDIA RTX PRO 6000 Blackwell", 97_887),
+        cli.Hardware(
+            "x86_64", "NVIDIA RTX PRO 6000 Blackwell", 97_887, (12, 0)
+        ),
         tmp_path,
         None,
     )
@@ -53,7 +60,9 @@ def test_rtx_profile_uses_stable_context_and_native_mtp(tmp_path):
 
 def test_explicit_context_overrides_profile_default(tmp_path):
     args = cli._profile_args(
-        cli.Hardware("x86_64", "NVIDIA RTX PRO 6000 Blackwell", 97_887),
+        cli.Hardware(
+            "x86_64", "NVIDIA RTX PRO 6000 Blackwell", 97_887, (12, 0)
+        ),
         tmp_path,
         131_072,
     )
@@ -63,7 +72,7 @@ def test_explicit_context_overrides_profile_default(tmp_path):
 
 def test_dgx_spark_profile_matches_experimental_sglang_shape(tmp_path):
     args = cli._profile_args(
-        cli.Hardware("aarch64", "NVIDIA GB10", 122_880),
+        cli.Hardware("aarch64", "NVIDIA GB10", 122_880, (12, 1)),
         tmp_path,
         None,
     )
@@ -82,12 +91,12 @@ def test_dgx_spark_profile_matches_experimental_sglang_shape(tmp_path):
 
 
 def test_dgx_spark_profile_requires_full_unified_memory(tmp_path):
-    hardware = cli.Hardware("aarch64", "NVIDIA GB10", 64_000)
+    hardware = cli.Hardware("aarch64", "NVIDIA GB10", 64_000, (12, 1))
 
     try:
         cli._profile_args(hardware, tmp_path, None)
     except RuntimeError as exc:
-        assert "no validated automatic profile" in str(exc)
+        assert "no automatic profile" in str(exc)
     else:
         raise AssertionError("undersized GB10 was accepted as a DGX Spark")
 
@@ -197,3 +206,57 @@ def test_missing_compiler_fails_before_model_loading(monkeypatch):
         assert "C++ compiler" in str(exc)
     else:
         raise AssertionError("missing compiler was accepted")
+
+
+def test_blackwell_consumer_uses_native_portable_cpu_offload(tmp_path):
+    args = cli._profile_args(
+        cli.Hardware("x86_64", "NVIDIA GeForce RTX 5090", 32_607, (12, 0)),
+        tmp_path,
+        None,
+    )
+
+    assert args[args.index("--offload-group-size") + 1] == "1"
+    assert args[args.index("--offload-num-in-group") + 1] == "1"
+    assert args[args.index("--offload-prefetch-step") + 1] == "1"
+    assert args[args.index("--offload-mode") + 1] == "cpu"
+    assert args[args.index("--context-length") + 1] == "16384"
+    assert args[args.index("--max-mamba-cache-size") + 1] == "4"
+    assert args[args.index("--kv-cache-dtype") + 1] == "fp8_e4m3"
+    assert args[args.index("--cuda-graph-backend-decode") + 1] == "disabled"
+    assert args[args.index("--cuda-graph-backend-prefill") + 1] == "disabled"
+    assert "--fp4-gemm-backend" not in args
+    assert "--moe-runner-backend" not in args
+    assert "--speculative-algorithm" not in args
+
+
+def test_ampere_and_ada_use_portable_marlin_auto_selection(tmp_path):
+    for hardware in (
+        cli.Hardware("x86_64", "NVIDIA GeForce RTX 3090", 24_576, (8, 6)),
+        cli.Hardware("x86_64", "NVIDIA GeForce RTX 4090", 24_564, (8, 9)),
+    ):
+        args = cli._profile_args(hardware, tmp_path, None)
+
+        assert args[args.index("--offload-group-size") + 1] == "1"
+        assert args[args.index("--kv-cache-dtype") + 1] == "bfloat16"
+        assert "--fp4-gemm-backend" not in args
+        assert "--moe-runner-backend" not in args
+        assert "--speculative-algorithm" not in args
+
+
+def test_cpu_offload_checks_available_host_memory(monkeypatch):
+    monkeypatch.setattr(cli, "_available_host_memory_gib", lambda: 70.0)
+
+    try:
+        cli._require_host_memory(True)
+    except RuntimeError as exc:
+        assert "80 GiB" in str(exc)
+        assert "70.0 GiB" in str(exc)
+    else:
+        raise AssertionError("insufficient host memory was accepted")
+
+
+def test_cpu_offload_rejects_smaller_than_24_gib(tmp_path):
+    hardware = cli.Hardware("x86_64", "NVIDIA RTX A4000", 16_384, (8, 6))
+
+    with pytest.raises(RuntimeError, match="at least 24 GiB"):
+        cli._profile_args(hardware, tmp_path, None)
