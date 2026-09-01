@@ -161,6 +161,55 @@ profile. The same grouped path produced exact text and structured tool calls in
 a partial-offload hardware simulation; complete 24 and 32 GB acceptance and
 performance measurements remain pending.
 
+### Jetson AGX Thor (SM110)
+
+Thor uses the aarch64 SGLang pin but needs the QSA FP8-KV compatibility work
+from [SGLang PR #36644](https://github.com/sgl-project/sglang/pull/36644)
+ported onto that source revision. The port is stored in
+`patches/sglang-qsa-fp8-thor.patch`; `scripts/install-thor-qsa-fp8.sh` applies
+it only when all three original source hashes match, keeps a timestamped
+backup, and updates the SSD Stream integrity guard to the patched hashes.
+`patches/sglang-qsa-prefill-budget.patch` also makes the dominant FP32 QSA
+prefill score-matrix budget configurable. The Thor launcher sets
+`SGLANG_QSA_PREFILL_LOGITS_BUDGET_MB=32`; with 12 full-attention layers this
+bounds the allocator's cached score-matrix blocks to roughly 384 MiB instead
+of roughly 1.5 GiB. Lowering this value trades additional prefill tiles for a
+smaller transient-memory footprint and does not change decode shapes.
+
+The launcher enables `--sleep-on-idle` and sets
+`SGLANG_EMPTY_CACHE_INTERVAL=60`. SGLang checks this only after the scheduler
+reports itself fully idle, then calls
+`torch.cuda.empty_cache()` to return unused allocator blocks. It does not call
+SGLang's `flush_cache()` and therefore does not discard the radix/KV prefix
+cache. Active model weights, KV pools, and tensors remain allocated.
+
+`patches/sglang-auto-truncate-page-safe.patch` fixes an upstream boundary
+deadlock exposed by `--allow-auto-truncate`, speculative decoding, and a prompt
+at the full token-pool limit. The tokenizer now truncates input while preserving
+the requested completion, and the scheduler rounds the final input limit down
+to a page-safe value before computing `max_new_tokens`. This prevents a request
+whose page-rounded prompt plus the scheduler's reserved page exceeds the token
+pool from entering the waiting queue permanently.
+
+The validated single-request Thor profile uses FP8 E4M3 target and draft KV,
+2,048-token chunked prefill, FP32 Mamba state, NEXTN 3/1/4, ReplaySSM for the
+speculative path, decode CUDA graphs, and native 262,144-token context. With
+the dense-path NVFP4 checkpoint from
+`hn7305/Qwen3.8-Flash-Next-NVFP4-Spark`, it completed deterministic book
+retrieval at 32K, 64K, 131K, 196K, 245,760, 260,800, and 261,888 prompt
+tokens. The final run returned all needles at 10%, 50%, and 90% without a
+decoder-layer NaN/Inf or logit sanitizer event. This is a tested workload, not
+a general accuracy proof: that checkpoint does not include calibrated FP8 KV
+scales, so SGLang uses the documented unit-scale fallback.
+
+Install the source port after installing the pinned runtime, then use the
+tested launcher:
+
+```bash
+scripts/install-thor-qsa-fp8.sh
+scripts/run-thor-hn-fp8.sh
+```
+
 ## How it works
 
 Qwen3.8 Flash-Next includes a 47.68 GiB predictive lookup embedding (PLE)
@@ -201,9 +250,11 @@ frequently used pages in reclaimable filesystem cache.
 | Prepared model | `garnermccloud/Qwen3.8-Flash-Next-NVFP4-SSD-Stream` |
 | SGLang on RTX PRO 6000 | Upstream Flash-Next source with [QSA FP8 KV support](https://github.com/sgl-project/sglang/pull/36644), pinned to commit `3df8e1e7dbc5807696622afe2929b6c33c185ca3` |
 | SGLang on DGX Spark | Upstream Flash-Next source with the [SM121 QSA kernel](https://github.com/sgl-project/sglang/pull/36845), pinned to commit `0a79825b7baa3e2aafd54e89097a5aba83d00b4e` |
+| SGLang on Jetson AGX Thor | Same aarch64 pin plus the guarded QSA FP8-KV port in `patches/sglang-qsa-fp8-thor.patch` |
 | Linux x86_64 / RTX PRO 6000 | Validated |
 | Linux aarch64 / DGX Spark | Experimental profile; hardware acceptance pending |
 | Linux x86_64 / SM80+ with CPU offload | Experimental; 24 and 32 GB hardware acceptance pending |
+| Linux aarch64 / Jetson AGX Thor | Validated for one 128 GB SM110 device, single request, native 262K context |
 | Table storage | FP8 and BF16 |
 | Tensor parallelism | Supported by the reader and adapter |
 
