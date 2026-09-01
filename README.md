@@ -167,8 +167,10 @@ Thor uses the aarch64 SGLang pin but needs the QSA FP8-KV compatibility work
 from [SGLang PR #36644](https://github.com/sgl-project/sglang/pull/36644)
 ported onto that source revision. The port is stored in
 `patches/sglang-qsa-fp8-thor.patch`; `scripts/install-thor-qsa-fp8.sh` applies
-it only when all three original source hashes match, keeps a timestamped
-backup, and updates the SSD Stream integrity guard to the patched hashes.
+it only when all three original source hashes match and keeps a timestamped
+backup. The SSD Stream integrity guard accepts both the original DGX Spark
+sources and the patched Thor sources, so adding Thor does not remove the
+existing Spark profile.
 `patches/sglang-qsa-prefill-budget.patch` also makes the dominant FP32 QSA
 prefill score-matrix budget configurable. The Thor launcher sets
 `SGLANG_QSA_PREFILL_LOGITS_BUDGET_MB=32`; with 12 full-attention layers this
@@ -191,24 +193,35 @@ to a page-safe value before computing `max_new_tokens`. This prevents a request
 whose page-rounded prompt plus the scheduler's reserved page exceeds the token
 pool from entering the waiting queue permanently.
 
-The validated single-request Thor profile uses FP8 E4M3 target and draft KV,
-2,048-token chunked prefill, FP32 Mamba state, NEXTN 3/1/4, ReplaySSM for the
-speculative path, decode CUDA graphs, and native 262,144-token context. With
-the dense-path NVFP4 checkpoint from
-`hn7305/Qwen3.8-Flash-Next-NVFP4-Spark`, it completed deterministic book
-retrieval at 32K, 64K, 131K, 196K, 245,760, 260,800, and 261,888 prompt
-tokens. The final run returned all needles at 10%, 50%, and 90% without a
-decoder-layer NaN/Inf or logit sanitizer event. This is a tested workload, not
-a general accuracy proof: that checkpoint does not include calibrated FP8 KV
-scales, so SGLang uses the documented unit-scale fallback.
+The validated Thor profile uses FP8 E4M3 target and draft KV, 2,048-token
+chunked prefill, FP32 Mamba state, NEXTN 3/1/4, ReplaySSM for the speculative
+path, decode CUDA graphs, and native 262,144-token per-request context. Four
+running-request slots share a 557,056-token (544 Ki-token) KV pool; this holds
+two nearly full 262K contexts, or four shorter contexts whose aggregate stays
+inside the pool. NEXTN requires four Mamba state slots per request, so the
+profile reserves 16.
+
+On one 128 GB Thor, two concurrent clients completed three cycles apiece of a
+roughly 250K-token continuation followed by model-generated context compaction.
+Peak KV use was 503,232 tokens (90.34%); all 12 requests completed, KV returned
+to zero, the service did not restart, and neither the service nor kernel journal
+recorded an OOM. A separate 262K boundary regression truncated a 262,871-token
+input to 261,110, returned all 1,024 requested output tokens with
+`finish_reason=length`, and released KV immediately. See
+[`docs/thor-validation.md`](docs/thor-validation.md) for the exact scope and
+limitations of these measurements.
 
 Install the source port after installing the pinned runtime, then use the
 tested launcher:
 
 ```bash
 scripts/install-thor-qsa-fp8.sh
-scripts/run-thor-hn-fp8.sh
+DRAFT=/path/to/prepared-model/mtp scripts/run-thor-hn-fp8.sh
 ```
+
+`MODEL`, `DRAFT`, `PYTHON`, and `SGLANG_SSD_STREAM_RUNTIME_ROOT` can be
+overridden for a different local layout. `DRAFT` is required because the tested
+dense-path checkpoint and MTP weights came from separate snapshots.
 
 ## How it works
 
@@ -254,7 +267,7 @@ frequently used pages in reclaimable filesystem cache.
 | Linux x86_64 / RTX PRO 6000 | Validated |
 | Linux aarch64 / DGX Spark | Experimental profile; hardware acceptance pending |
 | Linux x86_64 / SM80+ with CPU offload | Experimental; 24 and 32 GB hardware acceptance pending |
-| Linux aarch64 / Jetson AGX Thor | Validated for one 128 GB SM110 device, single request, native 262K context |
+| Linux aarch64 / Jetson AGX Thor | Validated for one 128 GB SM110 device, four request slots sharing 544 Ki-token KV, native 262K per-request context |
 | Table storage | FP8 and BF16 |
 | Tensor parallelism | Supported by the reader and adapter |
 

@@ -1,0 +1,35 @@
+diff --git a/python/sglang/srt/layers/attention/qsa/qsa_indexer.py b/python/sglang/srt/layers/attention/qsa/qsa_indexer.py
+--- a/python/sglang/srt/layers/attention/qsa/qsa_indexer.py
++++ b/python/sglang/srt/layers/attention/qsa/qsa_indexer.py
+@@ -2,6 +2,7 @@
+ 
+ from __future__ import annotations
+ 
++import os
+ from typing import Tuple
+ 
+ import torch
+@@ -26,7 +27,22 @@ from sglang.srt.model_executor.runner import get_is_capture_mode
+ # Bound the dominant FP32 [query_rows, compressed_keys] prefill workspace.
+ # Top-k is row-independent, so large scheduler chunks can be scored in smaller
+ # row tiles without changing the selected blocks.
+-_QSA_PREFILL_LOGITS_BUDGET_BYTES = 128 * 1024 * 1024
++def _qsa_prefill_logits_budget_bytes() -> int:
++    raw_value = os.getenv("SGLANG_QSA_PREFILL_LOGITS_BUDGET_MB", "128")
++    try:
++        budget_mb = int(raw_value)
++    except ValueError as exc:
++        raise ValueError(
++            "SGLANG_QSA_PREFILL_LOGITS_BUDGET_MB must be a positive integer"
++        ) from exc
++    if budget_mb <= 0:
++        raise ValueError(
++            "SGLANG_QSA_PREFILL_LOGITS_BUDGET_MB must be a positive integer"
++        )
++    return budget_mb * 1024 * 1024
++
++
++_QSA_PREFILL_LOGITS_BUDGET_BYTES = _qsa_prefill_logits_budget_bytes()
+ 
+ 
+ def _qsa_prefill_row_chunk_size(rows: int, keys: int, heads: int) -> int:

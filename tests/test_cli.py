@@ -88,6 +88,7 @@ def test_dgx_spark_profile_matches_experimental_sglang_shape(tmp_path):
     assert args[args.index("--speculative-num-draft-tokens") + 1] == "4"
     assert "--disable-prefill-cuda-graph" in args
     assert "--disable-cuda-graph" not in args
+    assert "--attention-backend" not in args
 
 
 def test_jetson_thor_profile_uses_validated_fp8_shape(tmp_path):
@@ -107,6 +108,8 @@ def test_jetson_thor_profile_uses_validated_fp8_shape(tmp_path):
     assert args[args.index("--speculative-draft-kv-cache-dtype") + 1] == "fp8_e4m3"
     assert args[args.index("--chunked-prefill-size") + 1] == "2048"
     assert args[args.index("--mamba-ssm-dtype") + 1] == "float32"
+    assert args[args.index("--attention-backend") + 1] == "triton"
+    assert args[args.index("--moe-runner-backend") + 1] == "flashinfer_cutlass"
     assert "--enable-linear-replayssm-spec" in args
     assert "--disable-prefill-cuda-graph" in args
 

@@ -1,0 +1,132 @@
+--- a/sglang/srt/managers/tokenizer_manager.py
++++ b/sglang/srt/managers/tokenizer_manager.py
+@@ -1190,10 +1190,19 @@
+     ) -> None:
+         """Validates that the input token count and the requested token count doesn't exceed the model's context length."""
+         # FIXME: unify the length validation logic with the one in the scheduler.
+-        _max_req_len = self.context_len
++        # The scheduler may expose an input limit smaller than the model's
++        # nominal context length (for KV paging and speculative decode
++        # bookkeeping).  Truncating to context_len here can otherwise turn a
++        # request into one that the scheduler can never admit.
++        _max_req_len = min(
++            self.context_len,
++            self.max_req_input_len or self.context_len,
++        )
+         input_token_num = len(input_ids) if input_ids is not None else 0
+         input_token_num += self.num_reserved_tokens
+ 
++        max_new_tokens = obj.sampling_params.get("max_new_tokens")
++
+         # Validate input length
+         if input_token_num >= self.context_len:
+             if self.allow_auto_truncate:
+@@ -1202,8 +1211,11 @@
+                     f"model's context length ({self.context_len} tokens). "
+                     "Truncating the input."
+                 )
+-                del input_ids[_max_req_len:]
+-                input_token_num = len(input_ids)
++                max_input_tokens = max(
++                    0, _max_req_len - self.num_reserved_tokens
++                )
++                del input_ids[max_input_tokens:]
++                input_token_num = len(input_ids) + self.num_reserved_tokens
+             else:
+                 raise ValueError(
+                     f"The input ({input_token_num} tokens) is longer than the "
+@@ -1211,21 +1223,40 @@
+                 )
+ 
+         # Validate total tokens (input + max_new_tokens)
+-        max_new_tokens = obj.sampling_params.get("max_new_tokens")
+         if (
+             self.validate_total_tokens
+             and max_new_tokens is not None
+             and (max_new_tokens + input_token_num) > _max_req_len
+         ):
+             if self.allow_auto_truncate:
++                # --allow-auto-truncate promises to truncate the input.  Keep
++                # the requested completion whenever possible instead of
++                # reducing max_new_tokens to zero, which is not schedulable
++                # with speculative decoding.
++                max_completion_tokens = max(
++                    0,
++                    _max_req_len
++                    - self.num_reserved_tokens
++                    - (1 if input_ids else 0),
++                )
++                preserved_new_tokens = min(
++                    max_new_tokens, max_completion_tokens
++                )
++                max_input_tokens = max(
++                    0,
++                    _max_req_len
++                    - self.num_reserved_tokens
++                    - preserved_new_tokens,
++                )
+                 logger.warning(
+                     f"Requested token count ({input_token_num} input + {max_new_tokens} new) "
+-                    f"exceeds the model's context length ({self.context_len} tokens). "
+-                    "Truncating max_new_tokens."
+-                )
+-                obj.sampling_params["max_new_tokens"] = max(
+-                    0, _max_req_len - input_token_num
++                    f"exceeds the effective request length ({_max_req_len} tokens). "
++                    f"Truncating the input to {max_input_tokens} tokens and "
++                    f"max_new_tokens to {preserved_new_tokens}."
+                 )
++                del input_ids[max_input_tokens:]
++                input_token_num = len(input_ids) + self.num_reserved_tokens
++                obj.sampling_params["max_new_tokens"] = preserved_new_tokens
+             else:
+                 total_tokens = max_new_tokens + input_token_num
+                 error_msg = (
+--- a/sglang/srt/managers/scheduler.py
++++ b/sglang/srt/managers/scheduler.py
+@@ -2216,6 +2216,19 @@
+         if req.sampling_params.min_new_tokens > req.sampling_params.max_new_tokens:
+             req.sampling_params.min_new_tokens = req.sampling_params.max_new_tokens
+ 
++    def max_schedulable_input_len(self) -> int:
++        """Largest prompt whose page-rounded allocation leaves one output token."""
++        token_budget = (
++            self.max_total_num_tokens * get_parallel().attn_dcp_size
++        )
++        max_rounded_input_len = token_budget - self.page_size - 2
++        if max_rounded_input_len <= 0:
++            return 0
++        return min(
++            self.max_req_input_len,
++            (max_rounded_input_len // self.page_size) * self.page_size,
++        )
++
+     def _process_and_broadcast_mm_inputs(
+         self,
+         raw_mm_inputs,
+@@ -2601,13 +2614,10 @@
+                 self._add_request_to_queue(req)
+                 return
+ 
+-        # initialize before returning
+-        self.init_req_max_new_tokens(req)
+-
+         # Validate prompt length
+         error_msg = validate_input_length(
+             req,
+-            self.max_req_input_len,
++            self.max_schedulable_input_len(),
+             get_serving().allow_auto_truncate,
+         )
+         if error_msg:
+@@ -2615,6 +2625,10 @@
+             self._add_request_to_queue(req)
+             return
+ 
++        # Initialize after prompt truncation so the completion budget is
++        # computed from the final, page-safe input length.
++        self.init_req_max_new_tokens(req)
++
+         if not recv_req.return_logprob and recv_req.logprob_start_len != -1:
+             # When return_logprob is False, logprob_start_len should be ignored
+             recv_req.logprob_start_len = -1

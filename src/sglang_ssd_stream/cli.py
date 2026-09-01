@@ -292,10 +292,6 @@ def _dgx_spark_args(snapshot: Path, context: int) -> list[str]:
         "modelopt_fp4",
         "--fp4-gemm-backend",
         "flashinfer_cutlass",
-        "--attention-backend",
-        "triton",
-        "--moe-runner-backend",
-        "flashinfer_cutlass",
         "--kv-cache-dtype",
         "bfloat16",
         "--page-size",
@@ -342,6 +338,13 @@ def _dgx_spark_args(snapshot: Path, context: int) -> list[str]:
 
 def _jetson_thor_args(snapshot: Path, context: int) -> list[str]:
     args = _dgx_spark_args(snapshot, context)
+    insert_at = args.index("--kv-cache-dtype")
+    args[insert_at:insert_at] = [
+        "--attention-backend",
+        "triton",
+        "--moe-runner-backend",
+        "flashinfer_cutlass",
+    ]
     args[args.index("--kv-cache-dtype") + 1] = "fp8_e4m3"
     insert_at = args.index("--kv-cache-dtype") + 2
     args[insert_at:insert_at] = [
