@@ -50,6 +50,45 @@ KV use returned to zero at completion. After the client process exited,
 This 40-minute run did not show continued growth, but it cannot exclude a much
 slower leak that would require an 8–12 hour soak to observe.
 
+## Mamba/NEXTN uptime guard
+
+The pinned aarch64 runtime predates the accepted-state and empty-checkpoint
+guards from SGLang PR #35821. `patches/sglang-mamba-radix-uptime.patch` ports
+the three execution-path changes used by Flash-Next:
+
+- never insert a zero-length Mamba radix checkpoint;
+- bound eager/KDA tracking to the accepted speculative path;
+- apply the same bound in the fused Triton commit kernel.
+
+Without these guards, a zero-length ghost radix node or a state selected past
+the accepted draft path can contaminate later Mamba state reuse. The installer
+checks the exact before/after SHA-256 hashes and refuses unknown source states.
+
+The public API name is the checkpoint that is actually served:
+`hn7305/Qwen3.8-Flash-Next-NVFP4-Spark`.
+
+## Reasoning and tool-call regression
+
+Before the restart, `scripts/reasoning-tool-regression.py` exercised thinking
+on/off with tools present/absent, both values of `preserve_thinking`, and eight
+synthetic agent turns. All tool requests finished as structured `tool_calls`;
+no output token was ID 0 and the longest identical-token run was one. A single
+post-patch/post-restart reproduction of SGLang issue #36537 also returned a
+valid `shell_probe` tool call (`finish_reason=tool_calls`) with no token ID 0.
+
+This means issue #36537 was not reproduced on this exact Thor checkpoint and
+runtime; it does not prove that every long-lived Kilo session is unaffected.
+The Mamba patch addresses the separate, source-confirmed uptime defect tracked
+by issue #37326 and must not be presented as a proven fix for the observed text
+fragmentation.
+
+Both target and draft startup logs state that the checkpoint has no FP8 KV
+scaling factors, so this runtime uses scale 1.0. The weights themselves load as
+NVFP4 without missing-layer or quantization-fallback warnings. Scale 1.0 is an
+explicit SGLang fallback with a possible accuracy cost; changing to BF16 KV
+would invalidate the current 557,056-token capacity, so the deployed profile
+keeps FP8 KV and records this limitation instead of silently changing it.
+
 ## Automatic truncation boundary
 
 The regression client constructed a chat prompt estimated at 262.9K tokens and

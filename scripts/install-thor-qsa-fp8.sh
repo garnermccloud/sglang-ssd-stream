@@ -12,12 +12,14 @@ PLUGIN_DST="${SITE}/sglang_ssd_stream/plugin.py"
 PATCH_FILE="${REPO_DIR}/patches/sglang-qsa-fp8-thor.patch"
 BUDGET_PATCH_FILE="${REPO_DIR}/patches/sglang-qsa-prefill-budget.patch"
 TRUNCATE_PATCH_FILE="${REPO_DIR}/patches/sglang-auto-truncate-page-safe.patch"
+MAMBA_PATCH_FILE="${REPO_DIR}/patches/sglang-mamba-radix-uptime.patch"
 
 test -d "${ATTN_DIR}/qsa"
 test -f "${PLUGIN_DST}"
 test -f "${PATCH_FILE}"
 test -f "${BUDGET_PATCH_FILE}"
 test -f "${TRUNCATE_PATCH_FILE}"
+test -f "${MAMBA_PATCH_FILE}"
 test -f "${REPO_DIR}/src/sglang_ssd_stream/plugin.py"
 
 BASE_KERNEL=7e369f09293fb9b0872c21f0010247ec1e3a696b5ad4809f04d9a730b1031095
@@ -32,6 +34,14 @@ BASE_TOKENIZER_MANAGER=92b42e5b0445111c60dc61751de4e9843d9dc8f2631c2509899be0ce6
 PATCHED_TOKENIZER_MANAGER=bfdca1daef6d1407ebb7d62532cd482ceac4440593412d9c7b3de1d985995e28
 BASE_SCHEDULER=e7751263dba7a1a008a0a2467ed1b68db58e2d3d6c728d53fbba6b63b565a9cd
 PATCHED_SCHEDULER=b522757ed15dce4a33617f17a7c6a10a653acbe2334b81d874130fb73b93c851
+BASE_SPEC_UTILS=573c71542142469f7d31dd0cf388be3789909c08002e30f9e36d0fbe36283e67
+BASE_MAMBA_RADIX=c90dd4f835b273673b9e2289624023469719041b6499b779818f3e5f4da455cb
+BASE_MAMBA_SCATTER=67681aefc281375e96ea48fd471b14a9b1594c6496d53c3bce3e5cc026537abc
+# Exact resulting hashes are kept explicit so unknown runtime revisions are
+# rejected rather than silently patched.
+PATCHED_SPEC_UTILS=5dae00fcd983233b39b5e2a1ed49d901e9919ea52085c80b92180e0287a36362
+PATCHED_MAMBA_RADIX=6175ba11fc7e1dcb9fb8e25b4cb987a05601bcc29b99e29e488090b0a3d574a2
+PATCHED_MAMBA_SCATTER=32596df1fbae67c13c6062d7cabb3505223138c3c3f980e57f665a13548abe0f
 
 kernel="${ATTN_DIR}/qsa/kernel.py"
 sparse="${ATTN_DIR}/qsa/sparse_attn.py"
@@ -39,6 +49,9 @@ backend="${ATTN_DIR}/qwen_sparse_attn_backend.py"
 indexer="${ATTN_DIR}/qsa/qsa_indexer.py"
 tokenizer_manager="${SITE}/sglang/srt/managers/tokenizer_manager.py"
 scheduler="${SITE}/sglang/srt/managers/scheduler.py"
+spec_utils="${SITE}/sglang/srt/speculative/spec_utils.py"
+mamba_radix="${SITE}/sglang/srt/mem_cache/mamba_radix_cache.py"
+mamba_scatter="${SITE}/sglang/kernels/ops/mamba/mamba_state_scatter_triton.py"
 read_hash() { sha256sum "$1" | cut -d' ' -f1; }
 
 kh=$(read_hash "${kernel}")
@@ -61,6 +74,28 @@ else
   echo "  kernel=${kh}" >&2
   echo "  sparse=${sh}" >&2
   echo "  backend=${bh}" >&2
+  exit 1
+fi
+
+suh=$(read_hash "${spec_utils}")
+mrh=$(read_hash "${mamba_radix}")
+msh=$(read_hash "${mamba_scatter}")
+if [[ "${suh}:${mrh}:${msh}" == "${PATCHED_SPEC_UTILS}:${PATCHED_MAMBA_RADIX}:${PATCHED_MAMBA_SCATTER}" ]]; then
+  echo "Mamba radix/NEXTN uptime patch is already installed."
+elif [[ "${suh}:${mrh}:${msh}" == "${BASE_SPEC_UTILS}:${BASE_MAMBA_RADIX}:${BASE_MAMBA_SCATTER}" ]]; then
+  backup="${REPO_DIR}/backups/sglang-mamba-$(date -u +%Y%m%dT%H%M%SZ)"
+  mkdir -p "${backup}"
+  cp -- "${spec_utils}" "${backup}/spec_utils.py"
+  cp -- "${mamba_radix}" "${backup}/mamba_radix_cache.py"
+  cp -- "${mamba_scatter}" "${backup}/mamba_state_scatter_triton.py"
+  patch --dry-run -d "${SITE}" -p2 < "${MAMBA_PATCH_FILE}"
+  patch -d "${SITE}" -p2 < "${MAMBA_PATCH_FILE}"
+  echo "Installed Mamba radix/NEXTN uptime patch; backup: ${backup}"
+else
+  echo "Refusing to patch an unknown SGLang Mamba source state:" >&2
+  echo "  spec_utils=${suh}" >&2
+  echo "  mamba_radix=${mrh}" >&2
+  echo "  mamba_scatter=${msh}" >&2
   exit 1
 fi
 
@@ -100,7 +135,8 @@ fi
 
 install -m 0644 "${REPO_DIR}/src/sglang_ssd_stream/plugin.py" "${PLUGIN_DST}"
 "${PYTHON}" -m py_compile "${kernel}" "${sparse}" "${backend}" "${indexer}" \
-  "${tokenizer_manager}" "${scheduler}" "${PLUGIN_DST}"
+  "${tokenizer_manager}" "${scheduler}" "${spec_utils}" "${mamba_radix}" \
+  "${mamba_scatter}" "${PLUGIN_DST}"
 
 test "$(read_hash "${kernel}")" = "${PATCHED_KERNEL}"
 test "$(read_hash "${sparse}")" = "${PATCHED_SPARSE}"
@@ -108,4 +144,7 @@ test "$(read_hash "${backend}")" = "${PATCHED_BACKEND}"
 test "$(read_hash "${indexer}")" = "${PATCHED_INDEXER}"
 test "$(read_hash "${tokenizer_manager}")" = "${PATCHED_TOKENIZER_MANAGER}"
 test "$(read_hash "${scheduler}")" = "${PATCHED_SCHEDULER}"
-echo "QSA FP8, page-safe truncation, and SSD-stream integrity guards are consistent."
+test "$(read_hash "${spec_utils}")" = "${PATCHED_SPEC_UTILS}"
+test "$(read_hash "${mamba_radix}")" = "${PATCHED_MAMBA_RADIX}"
+test "$(read_hash "${mamba_scatter}")" = "${PATCHED_MAMBA_SCATTER}"
+echo "QSA FP8, page-safe truncation, Mamba uptime, and SSD-stream guards are consistent."

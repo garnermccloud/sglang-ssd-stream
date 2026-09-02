@@ -20,7 +20,7 @@ export CMAKE_BUILD_PARALLEL_LEVEL=1
 
 MODEL=${MODEL:-${HOME}/models/Qwen3.8-Flash-Next-NVFP4-Spark}
 PYTHON=${PYTHON:-${RUNTIME_ROOT}/venv/bin/python}
-: "${DRAFT:?Set DRAFT to the prepared model's mtp directory}"
+DRAFT=${DRAFT:-${HOME}/models/sglang-ssd-stream-runtime/huggingface/hub/models--garnermccloud--Qwen3.8-Flash-Next-NVFP4-SSD-Stream/snapshots/83325b75b7cb498ef5d7a5477171cadf92ad21f5/mtp}
 
 test -f "${MODEL}/config.json"
 test -f "${DRAFT}/config.json"
@@ -33,7 +33,7 @@ test -x "${PYTHON}"
 exec "${PYTHON}" -m sglang.launch_server \
   --trust-remote-code \
   --model-path "${MODEL}" \
-  --served-model-name Qwen/Qwen3.6-27B-NVFP4 \
+  --served-model-name hn7305/Qwen3.8-Flash-Next-NVFP4-Spark \
   --host 0.0.0.0 \
   --port 8000 \
   --quantization modelopt_fp4 \
