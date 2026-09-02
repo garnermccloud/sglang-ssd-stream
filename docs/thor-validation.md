@@ -64,8 +64,8 @@ Without these guards, a zero-length ghost radix node or a state selected past
 the accepted draft path can contaminate later Mamba state reuse. The installer
 checks the exact before/after SHA-256 hashes and refuses unknown source states.
 
-The public API name is the checkpoint that is actually served:
-`hn7305/Qwen3.8-Flash-Next-NVFP4-Spark`.
+For client compatibility, the public API name remains the existing alias:
+`Qwen/Qwen3.6-27B-NVFP4`.
 
 ## Reasoning and tool-call regression
 

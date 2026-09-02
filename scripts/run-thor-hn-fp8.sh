@@ -33,7 +33,7 @@ test -x "${PYTHON}"
 exec "${PYTHON}" -m sglang.launch_server \
   --trust-remote-code \
   --model-path "${MODEL}" \
-  --served-model-name hn7305/Qwen3.8-Flash-Next-NVFP4-Spark \
+  --served-model-name Qwen/Qwen3.6-27B-NVFP4 \
   --host 0.0.0.0 \
   --port 8000 \
   --quantization modelopt_fp4 \
