@@ -53,13 +53,16 @@ SUPPORTED_SGLANG = {
                 "64b7dd1608acd9a6314f58bb10c29b22ecf4b368562edb83b1f198472fe6dec0"
             ),
             "sglang.srt.layers.attention.qsa.kernel": (
-                "7e369f09293fb9b0872c21f0010247ec1e3a696b5ad4809f04d9a730b1031095"
+                "7e369f09293fb9b0872c21f0010247ec1e3a696b5ad4809f04d9a730b1031095",
+                "2462e638aa5e26a1e715283fbc68f92c7db9149a5f30e0947eb78eb51970aceb",
             ),
             "sglang.srt.layers.attention.qsa.sparse_attn": (
-                "f3801cc37453278e884873a821350def23c58453eb91c56f2c96d8f62a3709f5"
+                "f3801cc37453278e884873a821350def23c58453eb91c56f2c96d8f62a3709f5",
+                "73a953b6d1ef843e9cebf620ef2f9e2aa513de6775dddca08dbf7f4bbc247d97",
             ),
             "sglang.srt.layers.attention.qwen_sparse_attn_backend": (
-                "7cb54a4440a3f6f9619227138398c173993a9f8deec8e6a6be50ce9067d50153"
+                "7cb54a4440a3f6f9619227138398c173993a9f8deec8e6a6be50ce9067d50153",
+                "3ba25953f98a75f3104e1bf53e7742b0e227563d1ddc6dfefc5e6e5561198221",
             ),
             "sglang.srt.models.qwen4_exp": (
                 "f406977eb2373937393241f453477867f7dc943bd4839216db8fe66fa9f921d8"
@@ -110,10 +113,14 @@ def register() -> None:
         if spec is None or spec.origin is None:
             raise RuntimeError(f"cannot locate required SGLang module {module_name}")
         actual_hash = _sha256(spec.origin)
-        if actual_hash != expected_hash:
+        expected_hashes = (
+            (expected_hash,) if isinstance(expected_hash, str) else expected_hash
+        )
+        if actual_hash not in expected_hashes:
             raise RuntimeError(
                 f"sglang-ssd-stream requires SGLang commit {commit}; "
-                f"{module_name} has SHA-256 {actual_hash}, expected {expected_hash}"
+                f"{module_name} has SHA-256 {actual_hash}, expected one of "
+                f"{', '.join(expected_hashes)}"
             )
 
     HookRegistry.register(

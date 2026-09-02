@@ -184,10 +184,22 @@ def _detect_hardware() -> Hardware:
         )
     try:
         name, memory, capability = [part.strip() for part in gpus[0].rsplit(",", 2)]
-        memory_mib = int(memory.strip())
         major, minor = (int(part) for part in capability.split(".", 1))
     except ValueError as exc:
         raise RuntimeError(f"cannot parse nvidia-smi output: {gpus[0]}") from exc
+    try:
+        memory_mib = int(memory)
+    except ValueError as exc:
+        if memory != "[N/A]":
+            raise RuntimeError(f"cannot parse nvidia-smi output: {gpus[0]}") from exc
+        try:
+            import torch
+
+            if not torch.cuda.is_available():
+                raise RuntimeError("PyTorch cannot access the NVIDIA GPU")
+            memory_mib = torch.cuda.get_device_properties(0).total_memory // (1024 * 1024)
+        except (ImportError, RuntimeError) as torch_exc:
+            raise RuntimeError(f"cannot determine unified GPU memory: {gpus[0]}") from torch_exc
     return Hardware(platform.machine(), name, memory_mib, (major, minor))
 
 
@@ -203,6 +215,14 @@ def _is_dgx_spark(hardware: Hardware) -> bool:
     return (
         hardware.architecture in {"aarch64", "arm64"}
         and "GB10" in hardware.gpu_name
+        and hardware.gpu_memory_mib >= 110_000
+    )
+
+
+def _is_jetson_thor(hardware: Hardware) -> bool:
+    return (
+        hardware.architecture in {"aarch64", "arm64"}
+        and "Thor" in hardware.gpu_name
         and hardware.gpu_memory_mib >= 110_000
     )
 
@@ -316,6 +336,31 @@ def _dgx_spark_args(snapshot: Path, context: int) -> list[str]:
     ]
 
 
+def _jetson_thor_args(snapshot: Path, context: int) -> list[str]:
+    args = _dgx_spark_args(snapshot, context)
+    insert_at = args.index("--kv-cache-dtype")
+    args[insert_at:insert_at] = [
+        "--attention-backend",
+        "triton",
+        "--moe-runner-backend",
+        "flashinfer_cutlass",
+    ]
+    args[args.index("--kv-cache-dtype") + 1] = "fp8_e4m3"
+    insert_at = args.index("--kv-cache-dtype") + 2
+    args[insert_at:insert_at] = [
+        "--speculative-draft-kv-cache-dtype",
+        "fp8_e4m3",
+    ]
+    args[args.index("--max-mamba-cache-size") + 1] = "16"
+    args[args.index("--chunked-prefill-size") + 1] = "2048"
+    args[args.index("--max-running-requests") + 1] = "4"
+    args[args.index("--cuda-graph-max-bs-decode") + 1] = "4"
+    args[args.index("--max-total-tokens") + 1] = "557056"
+    args[args.index("--mem-fraction-static") + 1] = "0.95"
+    args.insert(args.index("--allow-auto-truncate"), "--enable-linear-replayssm-spec")
+    return args
+
+
 def _supports_portable_nvfp4(hardware: Hardware) -> bool:
     return (
         hardware.architecture == "x86_64"
@@ -390,6 +435,8 @@ def _profile_args(
 ) -> list[str]:
     if _is_rtx_pro_6000(hardware):
         return _rtx_pro_args(snapshot, context or _RTX_DEFAULT_CONTEXT)
+    if _is_jetson_thor(hardware):
+        return _jetson_thor_args(snapshot, context or _SPARK_DEFAULT_CONTEXT)
     if _is_dgx_spark(hardware):
         return _dgx_spark_args(snapshot, context or _SPARK_DEFAULT_CONTEXT)
     if _supports_portable_nvfp4(hardware):

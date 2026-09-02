@@ -161,6 +161,68 @@ profile. The same grouped path produced exact text and structured tool calls in
 a partial-offload hardware simulation; complete 24 and 32 GB acceptance and
 performance measurements remain pending.
 
+### Jetson AGX Thor (SM110)
+
+Thor uses the aarch64 SGLang pin but needs the QSA FP8-KV compatibility work
+from [SGLang PR #36644](https://github.com/sgl-project/sglang/pull/36644)
+ported onto that source revision. The port is stored in
+`patches/sglang-qsa-fp8-thor.patch`; `scripts/install-thor-qsa-fp8.sh` applies
+it only when all three original source hashes match and keeps a timestamped
+backup. The SSD Stream integrity guard accepts both the original DGX Spark
+sources and the patched Thor sources, so adding Thor does not remove the
+existing Spark profile.
+`patches/sglang-qsa-prefill-budget.patch` also makes the dominant FP32 QSA
+prefill score-matrix budget configurable. The Thor launcher sets
+`SGLANG_QSA_PREFILL_LOGITS_BUDGET_MB=32`; with 12 full-attention layers this
+bounds the allocator's cached score-matrix blocks to roughly 384 MiB instead
+of roughly 1.5 GiB. Lowering this value trades additional prefill tiles for a
+smaller transient-memory footprint and does not change decode shapes.
+
+The launcher enables `--sleep-on-idle` and sets
+`SGLANG_EMPTY_CACHE_INTERVAL=60`. SGLang checks this only after the scheduler
+reports itself fully idle, then calls
+`torch.cuda.empty_cache()` to return unused allocator blocks. It does not call
+SGLang's `flush_cache()` and therefore does not discard the radix/KV prefix
+cache. Active model weights, KV pools, and tensors remain allocated.
+
+`patches/sglang-auto-truncate-page-safe.patch` fixes an upstream boundary
+deadlock exposed by `--allow-auto-truncate`, speculative decoding, and a prompt
+at the full token-pool limit. The tokenizer now truncates input while preserving
+the requested completion, and the scheduler rounds the final input limit down
+to a page-safe value before computing `max_new_tokens`. This prevents a request
+whose page-rounded prompt plus the scheduler's reserved page exceeds the token
+pool from entering the waiting queue permanently.
+
+The validated Thor profile uses FP8 E4M3 target and draft KV, 2,048-token
+chunked prefill, FP32 Mamba state, NEXTN 3/1/4, ReplaySSM for the speculative
+path, decode CUDA graphs, and native 262,144-token per-request context. Four
+running-request slots share a 557,056-token (544 Ki-token) KV pool; this holds
+two nearly full 262K contexts, or four shorter contexts whose aggregate stays
+inside the pool. NEXTN requires four Mamba state slots per request, so the
+profile reserves 16.
+
+On one 128 GB Thor, two concurrent clients completed three cycles apiece of a
+roughly 250K-token continuation followed by model-generated context compaction.
+Peak KV use was 503,232 tokens (90.34%); all 12 requests completed, KV returned
+to zero, the service did not restart, and neither the service nor kernel journal
+recorded an OOM. A separate 262K boundary regression truncated a 262,871-token
+input to 261,110, returned all 1,024 requested output tokens with
+`finish_reason=length`, and released KV immediately. See
+[`docs/thor-validation.md`](docs/thor-validation.md) for the exact scope and
+limitations of these measurements.
+
+Install the source port after installing the pinned runtime, then use the
+tested launcher:
+
+```bash
+scripts/install-thor-qsa-fp8.sh
+DRAFT=/path/to/prepared-model/mtp scripts/run-thor-hn-fp8.sh
+```
+
+`MODEL`, `DRAFT`, `PYTHON`, and `SGLANG_SSD_STREAM_RUNTIME_ROOT` can be
+overridden for a different local layout. `DRAFT` is required because the tested
+dense-path checkpoint and MTP weights came from separate snapshots.
+
 ## How it works
 
 Qwen3.8 Flash-Next includes a 47.68 GiB predictive lookup embedding (PLE)
@@ -201,9 +263,11 @@ frequently used pages in reclaimable filesystem cache.
 | Prepared model | `garnermccloud/Qwen3.8-Flash-Next-NVFP4-SSD-Stream` |
 | SGLang on RTX PRO 6000 | Upstream Flash-Next source with [QSA FP8 KV support](https://github.com/sgl-project/sglang/pull/36644), pinned to commit `3df8e1e7dbc5807696622afe2929b6c33c185ca3` |
 | SGLang on DGX Spark | Upstream Flash-Next source with the [SM121 QSA kernel](https://github.com/sgl-project/sglang/pull/36845), pinned to commit `0a79825b7baa3e2aafd54e89097a5aba83d00b4e` |
+| SGLang on Jetson AGX Thor | Same aarch64 pin plus the guarded QSA FP8-KV port in `patches/sglang-qsa-fp8-thor.patch` |
 | Linux x86_64 / RTX PRO 6000 | Validated |
 | Linux aarch64 / DGX Spark | Experimental profile; hardware acceptance pending |
 | Linux x86_64 / SM80+ with CPU offload | Experimental; 24 and 32 GB hardware acceptance pending |
+| Linux aarch64 / Jetson AGX Thor | Validated for one 128 GB SM110 device, four request slots sharing 544 Ki-token KV, native 262K per-request context |
 | Table storage | FP8 and BF16 |
 | Tensor parallelism | Supported by the reader and adapter |
 

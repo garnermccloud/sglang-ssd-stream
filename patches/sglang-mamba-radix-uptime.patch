@@ -1,0 +1,73 @@
+diff --git a/python/sglang/kernels/ops/mamba/mamba_state_scatter_triton.py b/python/sglang/kernels/ops/mamba/mamba_state_scatter_triton.py
+--- a/python/sglang/kernels/ops/mamba/mamba_state_scatter_triton.py
++++ b/python/sglang/kernels/ops/mamba/mamba_state_scatter_triton.py
+@@ -750,7 +750,9 @@ def _fused_commit_track_indices_kernel(
+         post = pre + al
+         cross = (pre // interval) != (post // interval)
+         tp = (post // interval) * interval
+-        ti = tp - pre - 1
++        # The boundary can fall beyond the accepted speculative path. Clamp
++        # the selected state to a step that was actually accepted.
++        ti = tl.minimum(tp - pre, al - 1)
+         ti = tl.where(ti < 0, 0, ti)
+         cand = tl.load(accept_index_ptr + base + ti).to(tl.int64) - base
+         tl.store(track_steps_out_ptr + b, tl.where(cross, cand, -1))
+diff --git a/python/sglang/srt/mem_cache/mamba_radix_cache.py b/python/sglang/srt/mem_cache/mamba_radix_cache.py
+--- a/python/sglang/srt/mem_cache/mamba_radix_cache.py
++++ b/python/sglang/srt/mem_cache/mamba_radix_cache.py
+@@ -575,8 +575,19 @@ def cache_finished_req(
+                 if write_pos_buf is not None:
+                     cache_len -= int(write_pos_buf[req.mamba_pool_idx].item())
+                     write_pos_buf[req.mamba_pool_idx] = 0
+-            if cache_len is None:
+-                cache_len = 0
++            if cache_len is None or cache_len == 0:
++                # Nothing to cache: free KV and mamba slots without inserting
++                # a key_len=0 ghost node into the radix tree. Such empty nodes
++                # poison subsequent match_prefix calls by serving as a stale
++                # mamba COW source with best_value_len=0. Only free the
++                # unprotected part of kv_indices.
++                self.token_to_kv_pool_allocator.free_segment(
++                    kv_indices[req.cache_protected_len :],
++                    start_pos=req.cache_protected_len,
++                )
++                self.req_to_token_pool.free_mamba_cache(req)
++                self.dec_lock_ref(req.last_node)
++                return
+             if cache_len != len(token_ids):
+                 cache_end_idx = max(cache_len, req.cache_protected_len)
+                 self.token_to_kv_pool_allocator.free_segment(
+diff --git a/python/sglang/srt/speculative/spec_utils.py b/python/sglang/srt/speculative/spec_utils.py
+--- a/python/sglang/srt/speculative/spec_utils.py
++++ b/python/sglang/srt/speculative/spec_utils.py
+@@ -831,9 +831,13 @@ def _verify_commit_step_indices(
+         != seq_lens_post_verify // mamba_track_interval
+     )
+     tracking_point = seq_lens_post_verify // mamba_track_interval * mamba_track_interval
+-    to_track_ith = torch.clamp(tracking_point - seq_lens_pre_verify - 1, min=0).to(
+-        torch.int64
+-    )
++    to_track_ith = torch.clamp(
++        torch.minimum(
++            tracking_point - seq_lens_pre_verify,
++            accept_lens - 1,
++        ),
++        min=0,
++    ).to(torch.int64)
+     candidate_track_steps = accept_index[req_idx, to_track_ith] - accept_indices_offset
+     mamba_steps_to_track = torch.where(
+         to_track_mask,
+@@ -1003,9 +1007,10 @@ def commit_mamba_states_after_verify(
+             seq_post = batch.seq_lens + accept_lens
+             to_track_mask = seq_pre // ti != seq_post // ti
+             tracking_point = seq_post // ti * ti
+-            to_track_ith = torch.clamp(tracking_point - seq_pre - 1, min=0).to(
+-                torch.int64
+-            )
++            to_track_ith = torch.clamp(
++                torch.minimum(tracking_point - seq_pre, accept_lens - 1),
++                min=0,
++            ).to(torch.int64)
+             candidate = accept_index[req_idx, to_track_ith] - accept_indices_offset
+             mamba_steps_to_track = torch.where(
+                 to_track_mask, candidate, torch.full_like(candidate, -1)

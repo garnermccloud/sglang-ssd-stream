@@ -88,6 +88,30 @@ def test_dgx_spark_profile_matches_experimental_sglang_shape(tmp_path):
     assert args[args.index("--speculative-num-draft-tokens") + 1] == "4"
     assert "--disable-prefill-cuda-graph" in args
     assert "--disable-cuda-graph" not in args
+    assert "--attention-backend" not in args
+
+
+def test_jetson_thor_profile_uses_validated_fp8_shape(tmp_path):
+    args = cli._profile_args(
+        cli.Hardware("aarch64", "NVIDIA Thor", 125_771, (11, 0)),
+        tmp_path,
+        None,
+    )
+
+    assert args[args.index("--context-length") + 1] == "262144"
+    assert args[args.index("--max-total-tokens") + 1] == "557056"
+    assert args[args.index("--max-running-requests") + 1] == "4"
+    assert args[args.index("--max-mamba-cache-size") + 1] == "16"
+    assert args[args.index("--cuda-graph-max-bs-decode") + 1] == "4"
+    assert args[args.index("--mem-fraction-static") + 1] == "0.95"
+    assert args[args.index("--kv-cache-dtype") + 1] == "fp8_e4m3"
+    assert args[args.index("--speculative-draft-kv-cache-dtype") + 1] == "fp8_e4m3"
+    assert args[args.index("--chunked-prefill-size") + 1] == "2048"
+    assert args[args.index("--mamba-ssm-dtype") + 1] == "float32"
+    assert args[args.index("--attention-backend") + 1] == "triton"
+    assert args[args.index("--moe-runner-backend") + 1] == "flashinfer_cutlass"
+    assert "--enable-linear-replayssm-spec" in args
+    assert "--disable-prefill-cuda-graph" in args
 
 
 def test_dgx_spark_profile_requires_full_unified_memory(tmp_path):
