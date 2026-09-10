@@ -69,6 +69,16 @@
       "sha256": "9c93c60df86d7af98404fafd6725a346b0b9bba53999de98a343ef3867baa2ac"
     },
     {
+      "path": "sglang/srt/speculative/spec_info.py",
+      "base_sha256": "1435f9d2ba846f813ca7f50ca2dbb90564b60006ecddfd3a852dc8ac6fb25506",
+      "sha256": "f5b9ae4b4612fdb816985c54740b5791cc8cfc096389777b6fbcc2194a63b568"
+    },
+    {
+      "path": "sglang/srt/speculative/spec_registry.py",
+      "base_sha256": "a42114f84258e4b0c5b4849b2e053fd1c19e1b3d25549034b3e48c67b940bce5",
+      "sha256": "1242e3fa12bd64cd3aa88efeed2cb8db2962a948c2eec047d4ba423f2b7096cd"
+    },
+    {
       "path": "sglang/srt/speculative/spec_utils.py",
       "base_sha256": "573c71542142469f7d31dd0cf388be3789909c08002e30f9e36d0fbe36283e67",
       "sha256": "40a92240c348cf054e6a99d95b8ee976394722ef8bdefdd088c4f61dc2511e56"

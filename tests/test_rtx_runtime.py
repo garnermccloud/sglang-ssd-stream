@@ -1,3 +1,4 @@
+import ast
 import hashlib
 import json
 import os
@@ -43,9 +44,31 @@ def installation(monkeypatch, tmp_path):
 def test_packaged_payload_matches_qualified_manifest():
     data = runtime._manifest()
     runtime._validate(runtime.PACKAGE / 'rtx_payload', data['files'], baseline=False)
-    assert len(runtime.module_hashes()) == 15
+    assert len(runtime.module_hashes()) == 17
     policy = json.loads((runtime.PACKAGE / 'rtx_adaptive.json').read_text())
     assert policy['1']['candidate_steps'] == [3, 7]
+
+
+def test_shared_read_phase_contract_is_packaged():
+    # Exercise the CPU-only method without importing the GPU runtime.
+    root = runtime.PACKAGE / 'rtx_payload/sglang/srt/speculative'
+    for filename in ['spec_info.py', 'spec_registry.py']:
+        tree = ast.parse((root / filename).read_text())
+        method = next(node for node in ast.walk(tree)
+                      if isinstance(node, ast.FunctionDef) and node.name == 'is_last_shared_read_phase')
+        namespace = {}
+        exec(compile(ast.Module(body=[method], type_ignores=[]), filename, 'exec'), namespace)
+        class Phase:
+            def is_target_verify(self):
+                return False
+            def is_draft_extend_v2(self):
+                return True
+        class Algorithm:
+            def is_dflash_family(self):
+                return False
+            def is_dspark(self):
+                return False
+        assert namespace['is_last_shared_read_phase'](Algorithm(), Phase()) is True
 
 
 def test_runtime_is_private_and_reusable(installation, tmp_path):

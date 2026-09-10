@@ -22,7 +22,7 @@ def _digest(path: Path) -> str:
 
 def _manifest() -> dict:
     data = json.loads((PACKAGE / 'rtx_manifest.json').read_text())
-    if data.get('version') != 1 or len(data.get('files', [])) != 15:
+    if data.get('version') != 1 or len(data.get('files', [])) != 17:
         raise RuntimeError('Invalid packaged RTX runtime manifest')
     seen = set()
     for entry in data['files']:
