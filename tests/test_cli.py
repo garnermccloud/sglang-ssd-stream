@@ -230,12 +230,18 @@ def test_cuda_view_uses_packaged_toolkit_without_copying_it(monkeypatch, tmp_pat
 
     view = cli._cuda_home()
 
-    assert view == tmp_path / "runtime/cuda"
+    assert view == runtime / "cuda"
     assert (view / "bin").resolve() == (packaged / "bin").resolve()
     assert (view / "include").resolve() == (packaged / "include").resolve()
     assert (view / "lib64/libcudart.so").resolve() == (
         packaged / "lib/libcudart.so.13"
     ).resolve()
+
+    second = tmp_path / "runtime/second-venv"
+    second.mkdir()
+    monkeypatch.setattr(cli.sys, "prefix", str(second))
+    assert cli._cuda_home() == second / "cuda"
+    assert view.is_dir()
 
 
 def test_explicit_cuda_home_is_preserved(monkeypatch, tmp_path):

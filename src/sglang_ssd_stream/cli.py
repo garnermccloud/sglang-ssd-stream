@@ -64,7 +64,7 @@ def _cuda_home() -> Path:
         return Path(configured).expanduser().resolve()
 
     packaged = _packaged_cuda_root()
-    runtime = Path(sys.prefix).resolve().parent
+    runtime = Path(sys.prefix).resolve()
     view = runtime / "cuda"
     lib64 = view / "lib64"
     lib64.mkdir(parents=True, exist_ok=True)

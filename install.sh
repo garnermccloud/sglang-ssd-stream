@@ -35,12 +35,13 @@ mkdir -p "$RUNTIME_DIR"
 VENV="$(mktemp -d "$RUNTIME_DIR/venv-$VERSION.XXXXXXXX")"
 PYTHON="$VENV/bin/python"
 
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 if ! command -v uv >/dev/null 2>&1; then
     curl -LsSf https://astral.sh/uv/install.sh -o "$VENV/install-uv.sh"
     sh "$VENV/install-uv.sh"
-    export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 fi
-uv venv --managed-python --python 3.12 "$VENV"
+# This is the unique directory just allocated above, never the active venv.
+uv venv --allow-existing --managed-python --python 3.12 "$VENV"
 
 SGLANG_BUILD_RUST_EXTS=none uv pip install \
     --python "$PYTHON" \

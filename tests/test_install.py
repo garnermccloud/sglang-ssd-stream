@@ -31,7 +31,10 @@ if name == "uname":
 elif name == "uv":
     if args[0] == "venv":
         stage("venv")
-        target = pathlib.Path(args[-1]) / "bin"
+        root = pathlib.Path(args[-1])
+        if list(root.iterdir()):
+            assert "--allow-existing" in args, "uv rejects a nonempty destination without --allow-existing"
+        target = root / "bin"
         target.mkdir()
         (target / "python").write_bytes(pathlib.Path(__file__).read_bytes())
         (target / "python").chmod(0o755)
@@ -160,6 +163,7 @@ def test_success_uses_immutable_version_and_final_shebang(installer, arch):
         "link", "promote",
     ]
     assert f"sglang @ https://github.com/sgl-project/sglang/archive/{PINS[arch]}.tar.gz#subdirectory=python" in calls[1][1]
+    assert "--allow-existing" in calls[0][1]
     assert calls[4][1][-1] == (
         "https://github.com/garnermccloud/sglang-ssd-stream/releases/download/"
         f"v{VERSION}/sglang_ssd_stream-{VERSION}-cp312-cp312-manylinux_2_28_{arch}.whl"
