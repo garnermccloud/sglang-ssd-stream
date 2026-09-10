@@ -2,6 +2,7 @@
 set -eu
 
 REPOSITORY="garnermccloud/sglang-ssd-stream"
+VERSION="0.3.0"
 RTX_SGLANG_COMMIT="3df8e1e7dbc5807696622afe2929b6c33c185ca3"
 SPARK_SGLANG_COMMIT="0a79825b7baa3e2aafd54e89097a5aba83d00b4e"
 FLASHINFER_VERSION="0.6.17"
@@ -24,32 +25,22 @@ case "$ARCH" in
         ;;
 esac
 
-if ! command -v uv >/dev/null 2>&1; then
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-    export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-fi
-
-LATEST="$(curl -fLsS -o /dev/null -w '%{url_effective}' \
-    "https://github.com/$REPOSITORY/releases/latest")"
-TAG="${LATEST##*/}"
-case "$TAG" in
-    v*) ;;
-    *)
-        echo "Could not resolve the latest sglang-ssd-stream release" >&2
-        exit 1
-        ;;
-esac
-VERSION="${TAG#v}"
+TAG="v$VERSION"
 WHEEL="sglang_ssd_stream-${VERSION}-cp312-cp312-manylinux_2_28_${ARCH}.whl"
-URL="https://github.com/$REPOSITORY/releases/download/$TAG/$WHEEL"
+URL="${SGLANG_SSD_STREAM_WHEEL_URL:-https://github.com/$REPOSITORY/releases/download/$TAG/$WHEEL}"
 RUNTIME_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/sglang-ssd-stream"
-VENV="$RUNTIME_DIR/venv"
+mkdir -p "$RUNTIME_DIR"
+# Never move this directory: generated console-script shebangs use its final path.
+# Keep previous and failed environments for recovery; only the launcher is promoted.
+VENV="$(mktemp -d "$RUNTIME_DIR/venv-$VERSION.XXXXXXXX")"
 PYTHON="$VENV/bin/python"
 
-if [ ! -x "$PYTHON" ]; then
-    mkdir -p "$RUNTIME_DIR"
-    uv venv --managed-python --python 3.12 "$VENV"
+if ! command -v uv >/dev/null 2>&1; then
+    curl -LsSf https://astral.sh/uv/install.sh -o "$VENV/install-uv.sh"
+    sh "$VENV/install-uv.sh"
+    export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 fi
+uv venv --managed-python --python 3.12 "$VENV"
 
 SGLANG_BUILD_RUST_EXTS=none uv pip install \
     --python "$PYTHON" \
@@ -83,8 +74,15 @@ uv pip install \
     "$URL"
 
 BIN_DIR="$HOME/.local/bin"
+"$PYTHON" -c 'import sys; from importlib.metadata import version; from sglang_ssd_stream import _io; assert version("sglang-ssd-stream") == sys.argv[1]' "$VERSION"
+"$VENV/bin/sglang-ssd-stream" --help >/dev/null
 mkdir -p "$BIN_DIR"
-ln -sfn "$VENV/bin/sglang-ssd-stream" "$BIN_DIR/sglang-ssd-stream"
+LINK_DIR="$(mktemp -d "$BIN_DIR/.sglang-ssd-stream.XXXXXXXX")"
+trap 'rm -rf "$LINK_DIR"' EXIT
+trap 'exit 1' HUP INT TERM
+ln -s "$VENV/bin/sglang-ssd-stream" "$LINK_DIR/launcher"
+# Linux rename in the same filesystem is atomic; -T refuses a directory target.
+mv -Tf "$LINK_DIR/launcher" "$BIN_DIR/sglang-ssd-stream"
 
 echo
 echo "Installed sglang-ssd-stream $VERSION"

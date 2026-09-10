@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import os
 import platform
 from pathlib import Path
 
@@ -93,6 +94,15 @@ def _sha256(path: str) -> str:
 
 
 def register() -> None:
+    try:
+        _register()
+    except Exception as exc:
+        # SGLang logs ordinary plugin exceptions and continues. Missing SSD
+        # hooks or incompatible runtime modules must instead abort each worker.
+        raise SystemExit(f"SSD Stream initialization failed: {exc}") from exc
+
+
+def _register() -> None:
     from sglang.srt.plugins.hook_registry import HookRegistry, HookType
 
     architecture = platform.machine()
@@ -104,6 +114,13 @@ def register() -> None:
         raise RuntimeError(
             f"sglang-ssd-stream does not support {platform.machine()}"
         ) from exc
+
+    from .rtx_runtime import PROFILE_ENV, module_hashes
+
+    if os.environ.get(PROFILE_ENV) == "1":
+        if architecture != "x86_64":
+            raise RuntimeError("The optimized RTX runtime requires Linux x86_64")
+        modules = {**modules, **module_hashes()}
 
     for module_name, expected_hash in modules.items():
         spec = importlib.util.find_spec(module_name)

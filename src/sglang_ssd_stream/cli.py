@@ -13,6 +13,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .config import load_manifest
+from .rtx_runtime import (
+    PREVIOUS_MODE_ENV, PROFILE_ENV, ROOT_ENV, clear_inherited_profile, prepare_runtime,
+)
 
 MODEL_REPO = "garnermccloud/Qwen3.8-Flash-Next-NVFP4-SSD-Stream"
 SERVED_MODEL = "Qwen3.8-Flash-Next-NVFP4-SSD-Stream"
@@ -207,8 +210,8 @@ def _is_dgx_spark(hardware: Hardware) -> bool:
     )
 
 
-def _rtx_pro_args(snapshot: Path, context: int) -> list[str]:
-    return [
+def _rtx_pro_args(snapshot: Path, context: int, optimized: bool = True) -> list[str]:
+    args = [
         "--trust-remote-code",
         "--model-path",
         str(snapshot),
@@ -259,6 +262,16 @@ def _rtx_pro_args(snapshot: Path, context: int) -> list[str]:
         "--tool-call-parser",
         "qwen3_coder",
     ]
+    if optimized:
+        args.extend([
+            "--speculative-adaptive",
+            "--speculative-adaptive-config",
+            str(Path(__file__).resolve().parent / "rtx_adaptive.json"),
+            "--enable-linear-replayssm-spec",
+            "--speculative-accept-threshold-single", "1",
+            "--speculative-accept-threshold-acc", "1",
+        ])
+    return args
 
 
 def _dgx_spark_args(snapshot: Path, context: int) -> list[str]:
@@ -387,9 +400,11 @@ def _profile_args(
     hardware: Hardware,
     snapshot: Path,
     context: int | None,
+    *,
+    rtx_optimized: bool = True,
 ) -> list[str]:
     if _is_rtx_pro_6000(hardware):
-        return _rtx_pro_args(snapshot, context or _RTX_DEFAULT_CONTEXT)
+        return _rtx_pro_args(snapshot, context or _RTX_DEFAULT_CONTEXT, rtx_optimized)
     if _is_dgx_spark(hardware):
         return _dgx_spark_args(snapshot, context or _SPARK_DEFAULT_CONTEXT)
     if _supports_portable_nvfp4(hardware):
@@ -435,6 +450,7 @@ def _serve(args: argparse.Namespace) -> None:
     data_dir = _data_dir(args.data_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
     hardware = _detect_hardware()
+    rtx_optimized = _is_rtx_pro_6000(hardware) and not getattr(args, "no_rtx_optimizations", False)
     grouped_offload = (
         _supports_portable_nvfp4(hardware)
         and not _is_rtx_pro_6000(hardware)
@@ -447,8 +463,9 @@ def _serve(args: argparse.Namespace) -> None:
         hardware,
         snapshot,
         args.context,
+        rtx_optimized=rtx_optimized,
     )
-    command = [sys.executable, "-m", "sglang.launch_server"]
+    command = [sys.executable, "-P", "-m", "sglang.launch_server"]
     command.extend(profile_args)
     command.extend(["--host", args.host, "--port", str(args.port)])
     if args.api_key:
@@ -471,6 +488,8 @@ def _serve(args: argparse.Namespace) -> None:
     print(f"Data: {data_dir}", flush=True)
     print(f"API: http://{args.host}:{args.port}/v1", flush=True)
     environment = os.environ.copy()
+    clear_inherited_profile(environment)
+    environment["PYTHONSAFEPATH"] = "1"
     environment["PATH"] = os.pathsep.join(
         (str(Path(sys.executable).parent), environment.get("PATH", ""))
     )
@@ -479,6 +498,16 @@ def _serve(args: argparse.Namespace) -> None:
     environment.setdefault("CMAKE_BUILD_PARALLEL_LEVEL", "1")
     environment.setdefault("CUDA_HOME", str(_cuda_home()))
     environment["SGLANG_PLUGINS"] = "ssd_stream"
+    if rtx_optimized:
+        runtime = prepare_runtime(data_dir)
+        environment["PYTHONPATH"] = os.pathsep.join(
+            part for part in (str(runtime), environment.get("PYTHONPATH", "")) if part
+        )
+        environment[PROFILE_ENV] = "1"
+        environment[ROOT_ENV] = str(runtime)
+        environment[PREVIOUS_MODE_ENV] = environment.get("SGLANG_RAGGED_VERIFY_MODE", "")
+        environment["SGLANG_RAGGED_VERIFY_MODE"] = "static"
+        print("RTX PRO profile: adaptive MTP 4/8, corrected packing and ReplaySSM", flush=True)
     os.execve(command[0], command, environment)
 
 
@@ -507,6 +536,8 @@ def _parser() -> argparse.ArgumentParser:
     serve.add_argument("--port", type=int, default=30000)
     serve.add_argument("--api-key")
     serve.add_argument("--context", type=int)
+    serve.add_argument("--no-rtx-optimizations", action="store_true",
+                       help="use the unmodified fixed-width RTX runtime for comparison or rollback")
     serve.add_argument("sglang_args", nargs=argparse.REMAINDER)
     serve.set_defaults(handler=_serve)
 

@@ -16,6 +16,7 @@ def _prepare_serve(monkeypatch, tmp_path):
     monkeypatch.setattr(cli, "_cuda_home", lambda: cuda_home)
     monkeypatch.setattr(cli, "_pinned_revision", lambda _data_dir: "a" * 40)
     monkeypatch.setattr(cli, "_download_model", lambda _data_dir, _revision: snapshot)
+    monkeypatch.setattr(cli, "prepare_runtime", lambda _data_dir: tmp_path / "rtx-runtime")
     monkeypatch.setattr(
         cli,
         "_detect_hardware",
@@ -56,6 +57,11 @@ def test_rtx_profile_uses_stable_context_and_native_mtp(tmp_path):
     )
     assert args[args.index("--speculative-num-draft-tokens") + 1] == "4"
     assert "--disable-flashinfer-autotune" not in args
+    assert "--speculative-adaptive" in args
+    assert "--enable-linear-replayssm-spec" in args
+    assert args[args.index("--speculative-accept-threshold-single") + 1] == "1"
+    assert args[args.index("--speculative-accept-threshold-acc") + 1] == "1"
+    assert cli.Path(args[args.index("--speculative-adaptive-config") + 1]).is_file()
 
 
 def test_explicit_context_overrides_profile_default(tmp_path):
@@ -64,10 +70,10 @@ def test_explicit_context_overrides_profile_default(tmp_path):
             "x86_64", "NVIDIA RTX PRO 6000 Blackwell", 97_887, (12, 0)
         ),
         tmp_path,
-        131_072,
+        262_144,
     )
 
-    assert args[args.index("--context-length") + 1] == "131072"
+    assert args[args.index("--context-length") + 1] == "262144"
 
 
 def test_dgx_spark_profile_matches_experimental_sglang_shape(tmp_path):
@@ -88,6 +94,8 @@ def test_dgx_spark_profile_matches_experimental_sglang_shape(tmp_path):
     assert args[args.index("--speculative-num-draft-tokens") + 1] == "4"
     assert "--disable-prefill-cuda-graph" in args
     assert "--disable-cuda-graph" not in args
+    assert "--speculative-adaptive" not in args
+    assert "--enable-linear-replayssm-spec" not in args
 
 
 def test_dgx_spark_profile_requires_full_unified_memory(tmp_path):
@@ -121,8 +129,9 @@ def test_serve_uses_own_python_environment(monkeypatch, tmp_path):
     cli._serve(args)
 
     assert executed["path"] == sys.executable
-    assert executed["command"][:3] == [
+    assert executed["command"][:4] == [
         sys.executable,
+        "-P",
         "-m",
         "sglang.launch_server",
     ]
@@ -136,6 +145,10 @@ def test_serve_uses_own_python_environment(monkeypatch, tmp_path):
     assert executed["environment"]["CMAKE_BUILD_PARALLEL_LEVEL"] == "1"
     assert executed["environment"]["CUDA_HOME"] == str(cuda_home)
     assert executed["environment"]["SGLANG_PLUGINS"] == "ssd_stream"
+    assert executed["environment"][cli.PROFILE_ENV] == "1"
+    assert executed["environment"]["PYTHONSAFEPATH"] == "1"
+    assert executed["environment"]["SGLANG_RAGGED_VERIFY_MODE"] == "static"
+    assert executed["environment"]["PYTHONPATH"].split(cli.os.pathsep)[0] == str(tmp_path / "rtx-runtime")
 
 
 def test_serve_preserves_explicit_compiler_parallelism(monkeypatch, tmp_path):
@@ -163,6 +176,42 @@ def test_serve_preserves_explicit_compiler_parallelism(monkeypatch, tmp_path):
     assert executed["MAX_JOBS"] == "4"
     assert executed["FLASHINFER_NVCC_THREADS"] == "3"
     assert executed["CMAKE_BUILD_PARALLEL_LEVEL"] == "2"
+
+
+def test_rtx_baseline_opt_out_does_not_prepare_shadow(monkeypatch, tmp_path):
+    _prepare_serve(monkeypatch, tmp_path)
+    monkeypatch.setattr(cli, "prepare_runtime", lambda _: pytest.fail("baseline prepared a runtime"))
+    monkeypatch.setenv(cli.PROFILE_ENV, "1")
+    monkeypatch.setenv(cli.ROOT_ENV, str(tmp_path / "inherited-rtx"))
+    monkeypatch.setenv("PYTHONPATH", cli.os.pathsep.join([str(tmp_path / "inherited-rtx"), "/user/extra"]))
+    monkeypatch.setenv("SGLANG_RAGGED_VERIFY_MODE", "static")
+    monkeypatch.setenv(cli.PREVIOUS_MODE_ENV, "")
+    args = cli._parser().parse_args(["serve", "--data-dir", str(tmp_path), "--no-rtx-optimizations"])
+    result = {}
+    monkeypatch.setattr(cli.os, "execve", lambda _, command, environment: result.update(command=command, environment=environment))
+    cli._serve(args)
+    assert "--speculative-adaptive" not in result["command"]
+    assert "--enable-linear-replayssm-spec" not in result["command"]
+    assert cli.PROFILE_ENV not in result["environment"]
+    assert result["environment"]["PYTHONPATH"] == "/user/extra"
+    assert "SGLANG_RAGGED_VERIFY_MODE" not in result["environment"]
+
+
+@pytest.mark.parametrize("hardware", [
+    cli.Hardware("aarch64", "NVIDIA GB10", 122_880, (12, 1)),
+    cli.Hardware("x86_64", "NVIDIA GeForce RTX 5090", 32_607, (12, 0)),
+])
+def test_other_hardware_never_prepares_rtx_runtime(monkeypatch, tmp_path, hardware):
+    _prepare_serve(monkeypatch, tmp_path)
+    monkeypatch.setattr(cli, "_detect_hardware", lambda: hardware)
+    monkeypatch.setattr(cli, "_require_host_memory", lambda _: None)
+    monkeypatch.setattr(cli, "prepare_runtime", lambda _: pytest.fail("non-RTX prepared a runtime"))
+    args = cli._parser().parse_args(["serve", "--data-dir", str(tmp_path)])
+    result = {}
+    monkeypatch.setattr(cli.os, "execve", lambda _, command, environment: result.update(command=command, environment=environment))
+    cli._serve(args)
+    assert "--speculative-adaptive" not in result["command"]
+    assert cli.PROFILE_ENV not in result["environment"]
 
 
 def test_cuda_view_uses_packaged_toolkit_without_copying_it(monkeypatch, tmp_path):
@@ -227,6 +276,8 @@ def test_blackwell_consumer_uses_native_portable_cpu_offload(tmp_path):
     assert "--fp4-gemm-backend" not in args
     assert "--moe-runner-backend" not in args
     assert "--speculative-algorithm" not in args
+    assert "--speculative-adaptive" not in args
+    assert "--enable-linear-replayssm-spec" not in args
 
 
 def test_ampere_and_ada_use_portable_marlin_auto_selection(tmp_path):

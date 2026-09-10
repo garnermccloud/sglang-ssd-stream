@@ -25,11 +25,40 @@ jobs:
             runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate release version
+        run: |
+          python - <<'PY'
+          import os, pathlib, tomllib
+          version = tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version']
+          if os.environ['GITHUB_REF'].startswith('refs/tags/'):
+              assert os.environ['GITHUB_REF_NAME'] == f'v{version}', 'Tag/project version mismatch'
+          PY
+          pip install pytest
+          pytest -q tests/test_install.py
       - uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
           args: --release --locked --out dist -i python3.12
           manylinux: "2_28"
+      - name: Validate wheel filename
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          python - <<'PY'
+          import os, pathlib, tomllib
+          version = tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version']
+          expected = f"sglang_ssd_stream-{version}-cp312-cp312-manylinux_2_28_{os.environ['TARGET']}.whl"
+          assert [p.name for p in pathlib.Path('dist').glob('*.whl')] == [expected]
+          import zipfile
+          with zipfile.ZipFile(pathlib.Path('dist') / expected) as wheel:
+              names = set(wheel.namelist())
+              for source in pathlib.Path('src/sglang_ssd_stream').rglob('*'):
+                  if source.suffix in ('.py', '.json') and '__pycache__' not in source.parts:
+                      assert source.relative_to('src').as_posix() in names, f'Missing package resource: {source}'
+          PY
       - name: Test wheel
         run: |
           docker run --rm \
@@ -38,7 +67,7 @@ jobs:
             -v "$PWD:/work" \
             -w /work \
             python:3.12-bookworm \
-            sh -c 'pip install -q dist/*.whl pytest && pytest -q tests/test_native_reader.py tests/test_cli.py tests/test_config.py tests/test_offload.py'
+            sh -c 'pip install -q dist/*.whl pytest && pytest -q tests'
       - uses: actions/upload-artifact@v4
         with:
           name: wheel-${{ matrix.target }}
@@ -54,7 +83,8 @@ jobs:
           pattern: wheel-*
           path: dist
           merge-multiple: true
-      - run: gh release upload "$GITHUB_REF_NAME" dist/*.whl --clobber
+      # The release manager creates and publishes the release after runtime acceptance.
+      - run: gh release upload "$GITHUB_REF_NAME" dist/*.whl
         env:
           GH_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
