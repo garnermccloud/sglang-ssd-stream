@@ -1,0 +1,362 @@
+{
+  "list": [
+    {
+      "wall_s": 5.282122467062436,
+      "wall_tps": 193.86146504275968,
+      "ttft_s": 0.08009537705220282,
+      "stream_tps": 196.65618536665954,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 369,
+      "correct_drafts_histogram": [
+        88,
+        61,
+        67,
+        153
+      ],
+      "reported_proposed_drafts": 1107,
+      "proposed_drafts": null,
+      "accepted_drafts": 654,
+      "accepted_per_round": 2.7750677506775068,
+      "conditional_acceptance": null,
+      "wall_ms_per_round": 14.314695032689528,
+      "fixed_round_cost_perfect_acceptance_tps": null,
+      "num_retractions": 0,
+      "output_hash": "3b09137ea9b7a124b2b89644a96a93b21f98aedf880e1739af4c4e14a1013ca6"
+    },
+    {
+      "wall_s": 5.3721508390735835,
+      "wall_tps": 190.61266719319943,
+      "ttft_s": 0.0774767700349912,
+      "stream_tps": 193.2145064359489,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 377,
+      "correct_drafts_histogram": [
+        78,
+        105,
+        39,
+        155
+      ],
+      "reported_proposed_drafts": 1131,
+      "proposed_drafts": null,
+      "accepted_drafts": 648,
+      "accepted_per_round": 2.716180371352785,
+      "conditional_acceptance": null,
+      "wall_ms_per_round": 14.249736973669982,
+      "fixed_round_cost_perfect_acceptance_tps": null,
+      "num_retractions": 0,
+      "output_hash": "b82721ed8d97d8f4c0121d4402611f5ee3bbfec2461fa068b7850232ca198ccf"
+    },
+    {
+      "wall_s": 5.6658451380208135,
+      "wall_tps": 180.7320841031145,
+      "ttft_s": 0.07677086407784373,
+      "stream_tps": 183.03702823735037,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 399,
+      "correct_drafts_histogram": [
+        91,
+        123,
+        51,
+        134
+      ],
+      "reported_proposed_drafts": 1197,
+      "proposed_drafts": null,
+      "accepted_drafts": 627,
+      "accepted_per_round": 2.5664160401002505,
+      "conditional_acceptance": null,
+      "wall_ms_per_round": 14.200113127871713,
+      "fixed_round_cost_perfect_acceptance_tps": null,
+      "num_retractions": 0,
+      "output_hash": "67a7e631be5f072fa236b0b37e6e4e983e81884e29723d0940cad3ab938bb947"
+    }
+  ],
+  "prose": [
+    {
+      "wall_s": 5.323531885049306,
+      "wall_tps": 192.3535017937656,
+      "ttft_s": 0.10024140903260559,
+      "stream_tps": 195.85565201497622,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 371,
+      "correct_drafts_histogram": [
+        73,
+        86,
+        70,
+        142
+      ],
+      "reported_proposed_drafts": 1113,
+      "proposed_drafts": null,
+      "accepted_drafts": 652,
+      "accepted_per_round": 2.7601078167115904,
+      "conditional_acceptance": null,
+      "wall_ms_per_round": 14.34914254730271,
+      "fixed_round_cost_perfect_acceptance_tps": null,
+      "num_retractions": 0,
+      "output_hash": "3ca6e78ae10ffb76926b1d02cc5aa448b9c0b916659cff95aac7880827416915"
+    },
+    {
+      "wall_s": 5.123781312024221,
+      "wall_tps": 199.85240150607729,
+      "ttft_s": 0.0818117349408567,
+      "stream_tps": 202.89846808504683,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 347,
+      "correct_drafts_histogram": [
+        69,
+        69,
+        61,
+        133,
+        4,
+        2,
+        3,
+        6
+      ],
+      "reported_proposed_drafts": 1041,
+      "proposed_drafts": null,
+      "accepted_drafts": 676,
+      "accepted_per_round": 2.951008645533141,
+      "conditional_acceptance": null,
+      "wall_ms_per_round": 14.765940380473259,
+      "fixed_round_cost_perfect_acceptance_tps": null,
+      "num_retractions": 0,
+      "output_hash": "4d6952beb4e036cbf0815e4d21df21296f6d04613bb95cdb7a08930891bb8615"
+    },
+    {
+      "wall_s": 5.207925713970326,
+      "wall_tps": 196.62338832005747,
+      "ttft_s": 0.07491940504405648,
+      "stream_tps": 199.30006825421992,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 347,
+      "correct_drafts_histogram": [
+        78,
+        77,
+        64,
+        98,
+        6,
+        6,
+        3,
+        15
+      ],
+      "reported_proposed_drafts": 1041,
+      "proposed_drafts": null,
+      "accepted_drafts": 676,
+      "accepted_per_round": 2.951008645533141,
+      "conditional_acceptance": null,
+      "wall_ms_per_round": 15.008431452364052,
+      "fixed_round_cost_perfect_acceptance_tps": null,
+      "num_retractions": 0,
+      "output_hash": "d18c47bd041657118c145d31b16da317420a39620e497ab3f46d7a084ff78bef"
+    }
+  ],
+  "code": [
+    {
+      "wall_s": 4.246262906934135,
+      "wall_tps": 241.15322636471967,
+      "ttft_s": 0.08114606293383986,
+      "stream_tps": 245.61429040052448,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 246,
+      "correct_drafts_histogram": [
+        33,
+        31,
+        38,
+        52,
+        28,
+        15,
+        12,
+        37
+      ],
+      "reported_proposed_drafts": 738,
+      "proposed_drafts": null,
+      "accepted_drafts": 781,
+      "accepted_per_round": 4.162601626016261,
+      "conditional_acceptance": null,
+      "wall_ms_per_round": 17.261231329000548,
+      "fixed_round_cost_perfect_acceptance_tps": null,
+      "num_retractions": 0,
+      "output_hash": "7a29a1b78bf23ef53d770fbff0ad76ed11f8acf2169e63a92ab081fcdc757a5b"
+    },
+    {
+      "wall_s": 3.559852625010535,
+      "wall_tps": 287.6523575177412,
+      "ttft_s": 0.07995332800783217,
+      "stream_tps": 293.97698209032103,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 201,
+      "correct_drafts_histogram": [
+        17,
+        22,
+        25,
+        21,
+        21,
+        20,
+        20,
+        55
+      ],
+      "reported_proposed_drafts": 603,
+      "proposed_drafts": null,
+      "accepted_drafts": 824,
+      "accepted_per_round": 5.0945273631840795,
+      "conditional_acceptance": null,
+      "wall_ms_per_round": 17.710709577166842,
+      "fixed_round_cost_perfect_acceptance_tps": null,
+      "num_retractions": 0,
+      "output_hash": "c3bdad83c1a49a94b8bf060ba46276c1796dbfda41a14f4503a4b865d1cc1fce"
+    },
+    {
+      "wall_s": 3.606774732004851,
+      "wall_tps": 283.91016242669593,
+      "ttft_s": 0.0782833929406479,
+      "stream_tps": 289.9291853572035,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 204,
+      "correct_drafts_histogram": [
+        17,
+        21,
+        25,
+        29,
+        25,
+        14,
+        19,
+        54
+      ],
+      "reported_proposed_drafts": 612,
+      "proposed_drafts": null,
+      "accepted_drafts": 820,
+      "accepted_per_round": 5.019607843137255,
+      "conditional_acceptance": null,
+      "wall_ms_per_round": 17.680268294141428,
+      "fixed_round_cost_perfect_acceptance_tps": null,
+      "num_retractions": 0,
+      "output_hash": "b212515d28014cd781b36aab784f271671a1242bccce27d9bf942305077347ee"
+    }
+  ],
+  "reasoning": [
+    {
+      "wall_s": 6.589793429942802,
+      "wall_tps": 155.39182083419087,
+      "ttft_s": 0.08108145999722183,
+      "stream_tps": 157.17494330887357,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 461,
+      "correct_drafts_histogram": [
+        175,
+        111,
+        73,
+        102
+      ],
+      "reported_proposed_drafts": 1383,
+      "proposed_drafts": null,
+      "accepted_drafts": 563,
+      "accepted_per_round": 2.2212581344902387,
+      "conditional_acceptance": null,
+      "wall_ms_per_round": 14.294562754756619,
+      "fixed_round_cost_perfect_acceptance_tps": null,
+      "num_retractions": 0,
+      "output_hash": "3a6588e128b5ba6c2d991bf93f325a34a56872d2233b802fc353896045f1c969"
+    },
+    {
+      "wall_s": 6.245860120980069,
+      "wall_tps": 163.94859637671794,
+      "ttft_s": 0.08193033596035093,
+      "stream_tps": 165.96677097727786,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 430,
+      "correct_drafts_histogram": [
+        143,
+        113,
+        60,
+        104,
+        4,
+        5,
+        0,
+        1
+      ],
+      "reported_proposed_drafts": 1290,
+      "proposed_drafts": null,
+      "accepted_drafts": 593,
+      "accepted_per_round": 2.3813953488372093,
+      "conditional_acceptance": null,
+      "wall_ms_per_round": 14.525256095302487,
+      "fixed_round_cost_perfect_acceptance_tps": null,
+      "num_retractions": 0,
+      "output_hash": "ec3cc93e29c47e2ff05b5b8ba0cb7603d61071c7b3f697c6bf1398f2c69f6a8b"
+    },
+    {
+      "wall_s": 6.538946278975345,
+      "wall_tps": 156.60015487395336,
+      "ttft_s": 0.0780218489235267,
+      "stream_tps": 158.33743099543372,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 449,
+      "correct_drafts_histogram": [
+        181,
+        95,
+        71,
+        89,
+        4,
+        2,
+        4,
+        3
+      ],
+      "reported_proposed_drafts": 1347,
+      "proposed_drafts": null,
+      "accepted_drafts": 575,
+      "accepted_per_round": 2.2806236080178173,
+      "conditional_acceptance": null,
+      "wall_ms_per_round": 14.563354741593196,
+      "fixed_round_cost_perfect_acceptance_tps": null,
+      "num_retractions": 0,
+      "output_hash": "3942ae1614d2d4448406e064100b9b0ebe2e7e7ebe197b9fd76d5b71669fe8e5"
+    }
+  ]
+}

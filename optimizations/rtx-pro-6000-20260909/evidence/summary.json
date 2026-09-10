@@ -1,0 +1,280 @@
+{
+  "scope": "Corrected packing in both arms; original-weight fixed MTP3/4 versus archived adaptive3/7+corrected ReplaySSM/shared scratch and early head bundle. Graphs, strict verification, FP32 SSM, FP8 KV and 262144 context/pool retained. Six measured requests per arm/workload; not independent agent-quality trials or a claim of universal speedup.",
+  "gpu_qualification": {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "tests_run": 5,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0,
+    "successful": true
+  },
+  "functional_passed": 12,
+  "comparison": {
+    "list": {
+      "control": {
+        "wall_tps": 175.57101271017274,
+        "stream_tps": 178.01816979467202,
+        "ttft_s": 0.0802149209775962,
+        "accepted_per_round": 2.5602560256025604,
+        "wall_ms_per_round": 14.513378903114539,
+        "wall_tps_range": [
+          172.66715241034896,
+          186.46946788119402
+        ],
+        "distinct_outputs": 6,
+        "conditional_acceptance_medians": [
+          0.7177240938533205,
+          0.693205574912892,
+          0.7663159945451004
+        ]
+      },
+      "candidate": {
+        "wall_tps": 186.13023520236598,
+        "stream_tps": 188.69902063191932,
+        "ttft_s": 0.07924238895066082,
+        "accepted_per_round": 2.6675531012774156,
+        "wall_ms_per_round": 14.282216003179755,
+        "wall_tps_range": [
+          180.7320841031145,
+          193.86146504275968
+        ],
+        "distinct_outputs": 6,
+        "conditional_acceptance_medians": null
+      },
+      "wall_tps_delta_percent": 6.014217454918991,
+      "control_after_vs_before_percent": -0.845350520727306,
+      "candidate_after_vs_before_percent": -4.703183746219953
+    },
+    "prose": {
+      "control": {
+        "wall_tps": 187.64194398572988,
+        "stream_tps": 190.1944500462538,
+        "ttft_s": 0.08039851201465353,
+        "accepted_per_round": 2.702147954743255,
+        "wall_ms_per_round": 14.400395734817035,
+        "wall_tps_range": [
+          177.08319048421558,
+          193.06584380012077
+        ],
+        "distinct_outputs": 6,
+        "conditional_acceptance_medians": [
+          0.7718499331550802,
+          0.7233192011998535,
+          0.6953119684289311
+        ]
+      },
+      "candidate": {
+        "wall_tps": 194.61184796644858,
+        "stream_tps": 197.1572296988802,
+        "ttft_s": 0.07524731202283874,
+        "accepted_per_round": 2.8177014731041163,
+        "wall_ms_per_round": 14.515202618537622,
+        "wall_tps_range": [
+          190.42334863450156,
+          199.85240150607729
+        ],
+        "distinct_outputs": 6,
+        "conditional_acceptance_medians": null
+      },
+      "wall_tps_delta_percent": 3.7144701406678804,
+      "control_after_vs_before_percent": 3.0082424945272246,
+      "candidate_after_vs_before_percent": -1.3307847653118432
+    },
+    "code": {
+      "control": {
+        "wall_tps": 238.7552356103218,
+        "stream_tps": 242.94096377398125,
+        "ttft_s": 0.07749571750173345,
+        "accepted_per_round": 3.3965851082555885,
+        "wall_ms_per_round": 14.276902490077916,
+        "wall_tps_range": [
+          232.58891134385448,
+          242.82550944886611
+        ],
+        "distinct_outputs": 6,
+        "conditional_acceptance_medians": [
+          0.908425337348054,
+          0.8903684689020803,
+          0.8515152030474118
+        ]
+      },
+      "candidate": {
+        "wall_tps": 282.1210558950494,
+        "stream_tps": 288.15165268302405,
+        "ttft_s": 0.08032946253661066,
+        "accepted_per_round": 4.995240814772511,
+        "wall_ms_per_round": 17.695488935654133,
+        "wall_tps_range": [
+          241.15322636471967,
+          294.79961910025065
+        ],
+        "distinct_outputs": 6,
+        "conditional_acceptance_medians": null
+      },
+      "wall_tps_delta_percent": 18.163296052492008,
+      "control_after_vs_before_percent": 2.1452964642657335,
+      "candidate_after_vs_before_percent": -1.2603328576577422
+    },
+    "reasoning": {
+      "control": {
+        "wall_tps": 163.34793823663978,
+        "stream_tps": 167.44641189871206,
+        "ttft_s": 0.07914762798463926,
+        "accepted_per_round": 2.3870631194574856,
+        "wall_ms_per_round": 14.455863037887383,
+        "wall_tps_range": [
+          155.78510175256255,
+          167.27723691113007
+        ],
+        "distinct_outputs": 6,
+        "conditional_acceptance_medians": [
+          0.6577349755415793,
+          0.6554893869381502,
+          0.6758323802262041
+        ]
+      },
+      "candidate": {
+        "wall_tps": 163.9669635380717,
+        "stream_tps": 166.00676406412373,
+        "ttft_s": 0.08081584749743342,
+        "accepted_per_round": 2.373145711370106,
+        "wall_ms_per_round": 14.540554605977078,
+        "wall_tps_range": [
+          155.39182083419087,
+          165.0062659517246
+        ],
+        "distinct_outputs": 6,
+        "conditional_acceptance_medians": null
+      },
+      "wall_tps_delta_percent": 0.3789611966422024,
+      "control_after_vs_before_percent": -0.600368486417846,
+      "candidate_after_vs_before_percent": 5.083633709848545
+    }
+  },
+  "split_passes": {
+    "list": {
+      "control-before": {
+        "wall_tps": 176.3162579123673,
+        "stream_tps": 178.50983999450338,
+        "ttft_s": 0.07979128696024418,
+        "accepted_per_round": 2.585858585858586,
+        "wall_ms_per_round": 14.582722738555391
+      },
+      "candidate-before-functional": {
+        "wall_tps": 190.61266719319943,
+        "stream_tps": 193.2145064359489,
+        "ttft_s": 0.0774767700349912,
+        "accepted_per_round": 2.716180371352785,
+        "wall_ms_per_round": 14.249736973669982
+      },
+      "candidate-after-functional": {
+        "wall_tps": 181.64780321153253,
+        "stream_tps": 184.18353482788973,
+        "ttft_s": 0.07939000497572124,
+        "accepted_per_round": 2.6189258312020463,
+        "wall_ms_per_round": 14.375654811863237
+      },
+      "control-after": {
+        "wall_tps": 174.82576750797818,
+        "stream_tps": 177.52649959484063,
+        "ttft_s": 0.08063855499494821,
+        "accepted_per_round": 2.5346534653465347,
+        "wall_ms_per_round": 14.489487187364347
+      }
+    },
+    "prose": {
+      "control-before": {
+        "wall_tps": 185.33903099475862,
+        "stream_tps": 187.92073765248531,
+        "ttft_s": 0.08118480595294386,
+        "accepted_per_round": 2.6736292428198434,
+        "wall_ms_per_round": 14.388046880109565
+      },
+      "candidate-before-functional": {
+        "wall_tps": 196.62338832005747,
+        "stream_tps": 199.30006825421992,
+        "ttft_s": 0.0818117349408567,
+        "accepted_per_round": 2.951008645533141,
+        "wall_ms_per_round": 14.765940380473259
+      },
+      "candidate-after-functional": {
+        "wall_tps": 194.0067542232542,
+        "stream_tps": 196.53465425203095,
+        "ttft_s": 0.07298864494077861,
+        "accepted_per_round": 2.7750677506775068,
+        "wall_ms_per_round": 14.37832037968073
+      },
+      "control-after": {
+        "wall_tps": 190.9144784840879,
+        "stream_tps": 193.61559198285548,
+        "ttft_s": 0.07994903600774705,
+        "accepted_per_round": 2.7379679144385025,
+        "wall_ms_per_round": 14.412744589524506
+      }
+    },
+    "code": {
+      "control-before": {
+        "wall_tps": 236.22141082320735,
+        "stream_tps": 240.24626919247302,
+        "ttft_s": 0.07781044999137521,
+        "accepted_per_round": 3.3684210526315788,
+        "wall_ms_per_round": 14.312844560863297
+      },
+      "candidate-before-functional": {
+        "wall_tps": 283.91016242669593,
+        "stream_tps": 289.9291853572035,
+        "ttft_s": 0.07995332800783217,
+        "accepted_per_round": 5.019607843137255,
+        "wall_ms_per_round": 17.680268294141428
+      },
+      "candidate-after-functional": {
+        "wall_tps": 280.3319493634028,
+        "stream_tps": 286.37412000884456,
+        "ttft_s": 0.0805202170740813,
+        "accepted_per_round": 4.970873786407767,
+        "wall_ms_per_round": 17.714157764343188
+      },
+      "control-after": {
+        "wall_tps": 241.28906039743623,
+        "stream_tps": 245.63565835548945,
+        "ttft_s": 0.0771809850120917,
+        "accepted_per_round": 3.4247491638795986,
+        "wall_ms_per_round": 14.19872012473831
+      }
+    },
+    "reasoning": {
+      "control-before": {
+        "wall_tps": 163.83975937840515,
+        "stream_tps": 169.12048138772244,
+        "ttft_s": 0.08082900603767484,
+        "accepted_per_round": 2.4150943396226414,
+        "wall_ms_per_round": 14.467613840275185
+      },
+      "candidate-before-functional": {
+        "wall_tps": 156.60015487395336,
+        "stream_tps": 158.33743099543372,
+        "ttft_s": 0.08108145999722183,
+        "accepted_per_round": 2.2806236080178173,
+        "wall_ms_per_round": 14.525256095302487
+      },
+      "candidate-after-functional": {
+        "wall_tps": 164.5611331368007,
+        "stream_tps": 166.54982897714243,
+        "ttft_s": 0.08055023499764502,
+        "accepted_per_round": 2.386946386946387,
+        "wall_ms_per_round": 14.55585311665167
+      },
+      "control-after": {
+        "wall_tps": 162.85611709487438,
+        "stream_tps": 164.78005028474777,
+        "ttft_s": 0.07753388897981495,
+        "accepted_per_round": 2.354022988505747,
+        "wall_ms_per_round": 14.414818938556046
+      }
+    }
+  },
+  "adaptive_switches": {
+    "narrow_to_wide": 21,
+    "wide_to_narrow": 21
+  }
+}

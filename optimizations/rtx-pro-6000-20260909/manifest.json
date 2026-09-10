@@ -1,0 +1,134 @@
+{
+  "format": 1,
+  "qualified_at": "2026-09-09",
+  "published_at": "2026-09-10",
+  "kind": "hash-bound source overlay; not a stock-SGLang or wheel release",
+  "baseline_image_id": "sha256:056a88812978e09cb4d82c0d75f285bb5f303bb9a8814175816364c5c2bffa6a",
+  "deployed_image_id": "sha256:33f63dd9027d10cc2e260ef2406f9692b849abd13f8a740ffd2216c1e6409a23",
+  "sglang_git_head": "d91c3682b0b429e4c70df63cd57f819588ce29b0",
+  "baseline_note": "The baseline contains additional Qwen/SSD integration changes; the Git HEAD alone does not reproduce it. Image IDs are local identities, not pullable registry references.",
+  "weights_changed": false,
+  "model": "RadixArk/Qwen3.8-Flash-Next-NVFP4",
+  "model_revision": "7b719225242aacd3dbd3f9407468c2ee9a9d2594",
+  "files": [
+    {
+      "file": "payload/opt/sglang-performance/adaptive.json",
+      "destination": "/opt/sglang-performance/adaptive.json",
+      "sha256": "dd30fcbd838763ad51b05817ebcbe504b3920d93dec6efb187dc6d963d999584",
+      "baseline_sha256": null,
+      "bytes": 203
+    },
+    {
+      "file": "payload/sgl-workspace/sglang/python/sglang/srt/layers/attention/qsa/graph_metadata.py",
+      "destination": "/sgl-workspace/sglang/python/sglang/srt/layers/attention/qsa/graph_metadata.py",
+      "sha256": "a7ee4195769bc18e4ef14109406358ce75a1fb6c036d3b5a010174f2330eea08",
+      "baseline_sha256": "9dcb66dffb079ca775677c3294ff45c945461fd8893200fc5d6ed26cc9f6d5f6",
+      "bytes": 8810
+    },
+    {
+      "file": "payload/sgl-workspace/sglang/python/sglang/srt/layers/attention/qsa/metadata.py",
+      "destination": "/sgl-workspace/sglang/python/sglang/srt/layers/attention/qsa/metadata.py",
+      "sha256": "a3592b8620d1cd9b0e9f4cd6ef3c07b1695018df5429359816455da2289cbeca",
+      "baseline_sha256": "c529169cb0e9887a8d52fdbaa6312963747cb48be0a8058445d4de4aedb8f391",
+      "bytes": 13213
+    },
+    {
+      "file": "payload/sgl-workspace/sglang/python/sglang/srt/layers/attention/qsa/qsa_indexer.py",
+      "destination": "/sgl-workspace/sglang/python/sglang/srt/layers/attention/qsa/qsa_indexer.py",
+      "sha256": "90953aaeefd113b8755daf02ae35de1175b871be37f9ae6049435978096f83b1",
+      "baseline_sha256": "bb57ce1e9abc4fbfcba2c9aaaf125b9e625983966497df57165b6d4c6461afe2",
+      "bytes": 26957
+    },
+    {
+      "file": "payload/sgl-workspace/sglang/python/sglang/srt/layers/attention/qsa/sparse_attn.py",
+      "destination": "/sgl-workspace/sglang/python/sglang/srt/layers/attention/qsa/sparse_attn.py",
+      "sha256": "77af25c882e603713c0f73937da653247f3b7000728d1a78a375b66a1a7aad31",
+      "baseline_sha256": "09f4df649d593021ff7d1b4cece8ada057434984e0e7d064a85f40f1121e9840",
+      "bytes": 17067
+    },
+    {
+      "file": "payload/sgl-workspace/sglang/python/sglang/srt/layers/attention/qwen_sparse_attn_backend.py",
+      "destination": "/sgl-workspace/sglang/python/sglang/srt/layers/attention/qwen_sparse_attn_backend.py",
+      "sha256": "8d932230d0e34dddaddfe299c81abbb48c3f7f970920b89544458b681edce8c8",
+      "baseline_sha256": "293e8b7327e0d10e28bdc17db5422c741761f64e6692f5d070fc1fc2147b5ead",
+      "bytes": 84513
+    },
+    {
+      "file": "payload/sgl-workspace/sglang/python/sglang/srt/mem_cache/kv_cache_configurator.py",
+      "destination": "/sgl-workspace/sglang/python/sglang/srt/mem_cache/kv_cache_configurator.py",
+      "sha256": "3563e575ac93bf2dc6b6bbedf28df79ceedc1ffba7e4cee6662e4bd61959051a",
+      "baseline_sha256": "7dcfbe5c0d357ae7fbbc49b57ad9ffe746e07bcb0beb0cc3197225e17b03d375",
+      "bytes": 100765
+    },
+    {
+      "file": "payload/sgl-workspace/sglang/python/sglang/srt/mem_cache/qsa_kv_pool.py",
+      "destination": "/sgl-workspace/sglang/python/sglang/srt/mem_cache/qsa_kv_pool.py",
+      "sha256": "362c8809afe6c89a311fd444538c4890d9ff290ccf0f6345779a5ec47fed0f3c",
+      "baseline_sha256": "85e7687daee0af9506b4c0e8840ec5b4c870be6f6930a3c210cbd31bf1f84412",
+      "bytes": 13853
+    },
+    {
+      "file": "payload/sgl-workspace/sglang/python/sglang/srt/model_executor/model_runner.py",
+      "destination": "/sgl-workspace/sglang/python/sglang/srt/model_executor/model_runner.py",
+      "sha256": "545ca699e51d45beb234ce1faf13885bd40d5892029b65e9a4ced6684172518c",
+      "baseline_sha256": "0a0bcee557d3f94f1a3b8def178be31d6b69c650dfb1f911bf9285c2d5de520a",
+      "bytes": 85516
+    },
+    {
+      "file": "payload/sgl-workspace/sglang/python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py",
+      "destination": "/sgl-workspace/sglang/python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py",
+      "sha256": "551493108ae0bb816cf64b7418e3e4b8d6458e8e8dd93263963eeef0f67e635d",
+      "baseline_sha256": "96a92a7c60a8ec81c606721ec7d5cf7588173a55505e58f7f231757a056029df",
+      "bytes": 67143
+    },
+    {
+      "file": "payload/sgl-workspace/sglang/python/sglang/srt/model_executor/runner_utils/pool.py",
+      "destination": "/sgl-workspace/sglang/python/sglang/srt/model_executor/runner_utils/pool.py",
+      "sha256": "86d2a1309dc3903bb86be14b3c4104342bc2a9cf3c830893544319a781f74b74",
+      "baseline_sha256": "f271c959b63c5925e0784f3232dc7babce2b2dd9eee525a18b58fd60886eea54",
+      "bytes": 1751
+    },
+    {
+      "file": "payload/sgl-workspace/sglang/python/sglang/srt/speculative/draft_utils.py",
+      "destination": "/sgl-workspace/sglang/python/sglang/srt/speculative/draft_utils.py",
+      "sha256": "2cde96c02ad4438e7301a59305614d91d0fd67efc4f765831ed5b433ad52e474",
+      "baseline_sha256": "0f9981d20765169518c5031d92de81830ebfbed8256a1ad82c7f8edfb6bc7284",
+      "bytes": 21200
+    },
+    {
+      "file": "payload/sgl-workspace/sglang/python/sglang/srt/speculative/eagle_draft_extend_cuda_graph_runner.py",
+      "destination": "/sgl-workspace/sglang/python/sglang/srt/speculative/eagle_draft_extend_cuda_graph_runner.py",
+      "sha256": "75255e15ece9ae17002d46274b9a498fe250b0a69719d0fdacc88b5100c9df17",
+      "baseline_sha256": "437d3d7090ae8f5fa0f84dbb61de071b64afa65fd088be8844e542aca3649dbe",
+      "bytes": 25076
+    },
+    {
+      "file": "payload/sgl-workspace/sglang/python/sglang/srt/speculative/eagle_worker_v2.py",
+      "destination": "/sgl-workspace/sglang/python/sglang/srt/speculative/eagle_worker_v2.py",
+      "sha256": "9c93c60df86d7af98404fafd6725a346b0b9bba53999de98a343ef3867baa2ac",
+      "baseline_sha256": "09479fc984daf0200f532e765c3381b75b694396638396bdf6031ccf2d26df86",
+      "bytes": 71521
+    },
+    {
+      "file": "payload/sgl-workspace/sglang/python/sglang/srt/speculative/spec_utils.py",
+      "destination": "/sgl-workspace/sglang/python/sglang/srt/speculative/spec_utils.py",
+      "sha256": "40a92240c348cf054e6a99d95b8ee976394722ef8bdefdd088c4f61dc2511e56",
+      "baseline_sha256": "573c71542142469f7d31dd0cf388be3789909c08002e30f9e36d0fbe36283e67",
+      "bytes": 42741
+    },
+    {
+      "file": "payload/usr/local/lib/python3.12/dist-packages/qsa_pack.py",
+      "destination": "/usr/local/lib/python3.12/dist-packages/qsa_pack.py",
+      "sha256": "8e5955fbfcd926edfbd1d0b5e9b360547b8a5e076bdfc2d26e4f6716a8622b07",
+      "baseline_sha256": null,
+      "bytes": 1901
+    },
+    {
+      "file": "payload/usr/local/lib/python3.12/dist-packages/sglang_ple_ssd/plugin.py",
+      "destination": "/usr/local/lib/python3.12/dist-packages/sglang_ple_ssd/plugin.py",
+      "sha256": "410654c4dff1067983eedd31fbc7901ea9c146c1424922da4e8acf3d8dc335a6",
+      "baseline_sha256": "2c85868eeeeca55881ec9230b128b5ea7d388ed11352efc31fac6a27e2a8355a",
+      "bytes": 2631
+    }
+  ]
+}

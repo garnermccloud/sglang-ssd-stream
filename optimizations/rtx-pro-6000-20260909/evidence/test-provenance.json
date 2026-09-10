@@ -1,0 +1,12 @@
+{
+  "tests/test_qsa_pack_gpu.py": "3a2b1024e48ec6038d0c236bca1b9f1f59b16fff4828d234392051f31d6d33b1",
+  "historical_result": {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "tests_run": 5,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0,
+    "successful": true
+  },
+  "note": "The historical five-test run used an additional saved activation fixture. That fixture is not distributed; its test skips without QSA_PASS3_FIXTURE."
+}

@@ -1,0 +1,749 @@
+--- /dev/null
++++ b/opt/sglang-performance/adaptive.json
+@@ -0,0 +1,11 @@
++{
++  "1": {
++    "candidate_steps": [3, 7],
++    "ema_alpha": 0.1,
++    "update_interval": 10,
++    "warmup_batches": 10,
++    "up_hysteresis": -0.2,
++    "down_hysteresis": -0.25,
++    "ceiling_coeff": 0
++  }
++}
+--- a/sgl-workspace/sglang/python/sglang/srt/layers/attention/qsa/graph_metadata.py
++++ b/sgl-workspace/sglang/python/sglang/srt/layers/attention/qsa/graph_metadata.py
+@@ -3,9 +3,7 @@
+ Compressed addressing is pure arithmetic over the page-aligned full-KV
+ cache (the DSV4 scheme): a group's compressed slot is any of its raw slots
+ floor-divided by the compress ratio, so the kernels rebuild the per-row
+-graph buffers from request lengths plus ``req_to_token`` alone — no
+-allocation, no ownership state, and accept-dependent speculative lengths
+-never need the host.
++graph buffers from request lengths plus ``req_to_token`` alone.
+ 
+ * ``_qsa_graph_layout_kernel`` (one program per request + a tail program) —
+   request row layout: decode rows or speculative verify/draft-extend rows
+@@ -14,7 +12,8 @@
+   lengths, the boundary write slot (last raw slot // ratio; non-boundary
+   rows keep the inert reserved slot 0), the row's page table of full-KV
+   page ids, and the layer-independent indexer inputs (logical position,
+-  pending-ring state slot, trailing-group member ring slots).
++  pending-ring state slot, trailing-group member ring slots). The ring spans
++  the speculative window so uncommitted rows cannot alias the committed tail.
+ 
+ Both are launched once eagerly at capture warmup (JIT compile + dummy
+ layout) and then recorded into the main CUDA graph through
+@@ -125,6 +124,7 @@
+     req_to_token_row_stride,
+     max_pages,
+     RATIO: tl.constexpr,
++    RING_SIZE: tl.constexpr,
+     FULL_PAGE: tl.constexpr,  # full-KV tokens per page
+     PAGE_BLOCK: tl.constexpr,
+ ):
+@@ -148,11 +148,14 @@
+     tl.store(write_locs_ptr + row, write_loc)
+ 
+     tl.store(logical_positions_ptr + row, current)
+-    tl.store(state_slots_ptr + row, req * RATIO + (current % RATIO).to(tl.int64))
++    tl.store(
++        state_slots_ptr + row,
++        req * RING_SIZE + (current % RING_SIZE).to(tl.int64),
++    )
+     ring_base = row.to(tl.int64) * RATIO
+     for k in tl.static_range(RATIO):
+         member = tl.maximum(current - (RATIO - 1 - k), 0)
+-        slot = req * RATIO + (member % RATIO).to(tl.int64)
++        slot = req * RING_SIZE + (member % RING_SIZE).to(tl.int64)
+         tl.store(ring_locs_ptr + ring_base + k, slot.to(tl.int32))
+ 
+     # Page-table entries are the request's FULL-KV page ids, read from the
+@@ -235,6 +238,7 @@
+         req_to_token.stride(0),
+         max_pages,
+         RATIO=indexer.compress_ratio,
++        RING_SIZE=getattr(pool, "qsa_pending_ring_size", indexer.compress_ratio),
+         FULL_PAGE=pool.qsa_compressed_page_size * indexer.compress_ratio,
+         PAGE_BLOCK=128,
+         num_warps=1,
+--- a/sgl-workspace/sglang/python/sglang/srt/layers/attention/qsa/metadata.py
++++ b/sgl-workspace/sglang/python/sglang/srt/layers/attention/qsa/metadata.py
+@@ -242,25 +242,26 @@
+     sequence_lengths: torch.Tensor,
+     logical_positions: torch.Tensor,
+     compress_ratio: int,
++    pending_ring_size: int,
+     is_extend: bool,
+ ) -> torch.Tensor:
+     """Per-token slots in the per-request pending ring.
+ 
+-    ``req_pool_idx * ratio + position % ratio``: four consecutive positions
+-    occupy four distinct slots, which is exactly the pending group. On extend
+-    forwards only that pending tail must survive the forward (compression
+-    sources members from the chunk itself), so older tokens dump into ring
+-    rows [0, ratio) -- request slot 0 is never allocated. Pure tensor
+-    arithmetic, CUDA-graph safe.
++    The ring spans the pending committed group plus the largest speculative
++    window. Absolute-position modulo addressing keeps that committed tail from
++    colliding with uncommitted future rows in the same verify forward. On
++    extend forwards only the pending tail survives (completed groups source
++    their members from the chunk), so older tokens dump into request slot 0.
++    Pure tensor arithmetic, CUDA-graph safe.
+     """
+     rows = token_to_batch_idx.long()[: logical_positions.numel()]
+     requests = req_pool_indices.long()[rows]
+     positions = logical_positions.long()
+-    slots = requests * compress_ratio + positions % compress_ratio
++    slots = requests * pending_ring_size + positions % pending_ring_size
+     if is_extend:
+         lengths = sequence_lengths.long()[rows]
+         pending = positions >= (lengths // compress_ratio) * compress_ratio
+-        slots = torch.where(pending, slots, positions % compress_ratio)
++        slots = torch.where(pending, slots, positions % pending_ring_size)
+     return slots
+ 
+ 
+@@ -270,6 +271,7 @@
+     group_end_positions: torch.Tensor,
+     sequence_ids: torch.Tensor,
+     compress_ratio: int,
++    pending_ring_size: int,
+ ) -> torch.Tensor:
+     """Ring slots of a planned group's members, oldest first."""
+     requests = req_pool_indices.long()[sequence_ids]
+@@ -279,7 +281,7 @@
+         dtype=torch.long,
+     )
+     positions = (group_end_positions[:, None] - offsets[None, :]).clamp_min(0)
+-    return requests[:, None] * compress_ratio + positions % compress_ratio
++    return requests[:, None] * pending_ring_size + positions % pending_ring_size
+ 
+ 
+ def build_rope_position_matrix(
+--- a/sgl-workspace/sglang/python/sglang/srt/layers/attention/qsa/qsa_indexer.py
++++ b/sgl-workspace/sglang/python/sglang/srt/layers/attention/qsa/qsa_indexer.py
+@@ -271,6 +271,7 @@
+             sequence_lengths=metadata.sequence_lengths,
+             logical_positions=logical_positions,
+             compress_ratio=self.compress_ratio,
++            pending_ring_size=metadata.token_to_kv_pool.qsa_pending_ring_size,
+             is_extend=is_extend,
+         )
+ 
+@@ -282,6 +283,7 @@
+             group_end_positions=group_end_positions,
+             sequence_ids=sequence_ids,
+             compress_ratio=self.compress_ratio,
++            pending_ring_size=metadata.token_to_kv_pool.qsa_pending_ring_size,
+         )
+ 
+ 
+--- a/sgl-workspace/sglang/python/sglang/srt/layers/attention/qsa/sparse_attn.py
++++ b/sgl-workspace/sglang/python/sglang/srt/layers/attention/qsa/sparse_attn.py
+@@ -5,6 +5,8 @@
+ import torch
+ import triton
+ import triton.language as tl
++
++from qsa_pack import compact_sparse_indices
+ 
+ _FP8_DTYPES = (
+     torch.float8_e4m3fn,
+@@ -542,6 +544,7 @@
+ ):
+     if k.dtype != v.dtype or out_k.dtype != out_v.dtype:
+         raise ValueError("QSA compact K/V input and output dtype pairs must match")
++    indices = compact_sparse_indices(indices, seq_lens)
+     dequantize_fp8 = is_fp8_kv_dtype(k.dtype) and not is_fp8_kv_dtype(out_k.dtype)
+     _, heads, dim = k.shape
+     block_topk = 16
+--- a/sgl-workspace/sglang/python/sglang/srt/layers/attention/qwen_sparse_attn_backend.py
++++ b/sgl-workspace/sglang/python/sglang/srt/layers/attention/qwen_sparse_attn_backend.py
+@@ -39,6 +39,7 @@
+     sparse_gqa_fwd_interface_triton_ck,
+ )
+ from sglang.srt.model_executor.forward_batch_info import ForwardMode
++from sglang.srt.runtime_context import get_buffer, get_disagg, get_exec
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -295,13 +296,18 @@
+                 "Qwen QSA target verification supports only " "speculative_eagle_topk=1"
+             )
+         draft_tokens = int(getattr(spec_info, "draft_token_num", 0) or 0)
+-        if draft_tokens > self.compress_ratio:
+-            # The pending-group ring keys state by position % ratio; a verify
+-            # window wider than the ratio would collide within one forward.
++        pending_ring_size = int(
++            getattr(
++                self.token_to_kv_pool,
++                "qsa_pending_ring_size",
++                self.compress_ratio,
++            )
++        )
++        if draft_tokens + self.compress_ratio > pending_ring_size:
+             raise NotImplementedError(
+-                "Qwen QSA requires speculative_num_draft_tokens <= the QSA "
+-                f"compress ratio ({self.compress_ratio}): the pending "
+-                f"index-key ring holds one group; got {draft_tokens}"
++                "Qwen QSA pending ring is too small for target verification: "
++                f"ring={pending_ring_size}, ratio={self.compress_ratio}, "
++                f"draft_tokens={draft_tokens}"
+             )
+ 
+     @staticmethod
+@@ -761,8 +767,8 @@
+                     : token_to_batch_idx.numel()
+                 ]
+             if not self.should_reuse_mtp_sparse_indices(forward_batch):
++                pool = self.token_to_kv_pool
+                 if decode_like:
+-                    pool = self.token_to_kv_pool
+                     decode_page_table, decode_lengths = compressed_decode_view(
+                         compressed_page_size=pool.qsa_compressed_page_size,
+                         compress_ratio=pool.qsa_compress_ratio,
+@@ -775,6 +781,9 @@
+                     sequence_lengths=sequence_lengths,
+                     logical_positions=ring_logical_positions,
+                     compress_ratio=self.compress_ratio,
++                    pending_ring_size=getattr(
++                        pool, "qsa_pending_ring_size", self.compress_ratio
++                    ),
+                     is_extend=group_member_rows is not None,
+                 )
+                 if write_locs.numel():
+@@ -793,6 +802,9 @@
+                             group_end_positions=group_positions.long(),
+                             sequence_ids=group_sequence_ids.long(),
+                             compress_ratio=self.compress_ratio,
++                            pending_ring_size=getattr(
++                                pool, "qsa_pending_ring_size", self.compress_ratio
++                            ),
+                         )
+         indexer_metadata = QSAIndexerMetadata(
+             sequence_lengths=sequence_lengths,
+@@ -1220,6 +1232,7 @@
+                 sequence_lengths=metadata.sequence_lengths,
+                 logical_positions=current_positions,
+                 compress_ratio=ratio,
++                pending_ring_size=getattr(pool, "qsa_pending_ring_size", ratio),
+                 is_extend=False,
+             )
+         )
+@@ -1229,6 +1242,7 @@
+                 group_end_positions=current_positions,
+                 sequence_ids=metadata.token_to_batch_idx.long(),
+                 compress_ratio=ratio,
++                pending_ring_size=getattr(pool, "qsa_pending_ring_size", ratio),
+             ).to(torch.int32)
+         )
+ 
+@@ -1564,6 +1578,30 @@
+             cached = (cu, block_tables)
+             self._trtllm_sparse_tables[key] = cached
+         return cached
++
++    def _get_trtllm_workspace(self, device):
++        if self._trtllm_workspace is not None:
++            return self._trtllm_workspace
++        args = getattr(self.runner, "server_args", None)
++        shared = (
++            device.type == "cuda"
++            and getattr(args, "max_running_requests", None) == 1
++            and getattr(args, "speculative_algorithm", None) in ("NEXTN", "EAGLE")
++            and getattr(args, "speculative_eagle_topk", None) == 1
++            and not get_exec().overlap.enable_two_batch_overlap
++            and not get_disagg().enable_pdmux
++        )
++
++        def allocate():
++            return torch.zeros(128 * 1024 * 1024, dtype=torch.uint8, device=device)
++
++        # TRTLLM's counter slab requires zero initialization and ordered reuse.
++        # Native draft/verify/extend use one compute stream in this topology.
++        self._trtllm_workspace = (
++            get_buffer(f"qsa.trtllm_sparse_decode.workspace.v1.{device}.serial-nextn", allocate)
++            if shared else allocate()
++        )
++        return self._trtllm_workspace
+ 
+     def _forward_trtllm_sparse(
+         self,
+@@ -1635,15 +1673,12 @@
+             .view(-1, page, num_kv_heads, head_dim)
+             .permute(0, 2, 1, 3)
+         )
+-        if self._trtllm_workspace is None:
+-            self._trtllm_workspace = torch.zeros(
+-                128 * 1024 * 1024, dtype=torch.uint8, device=device
+-            )
++        workspace = self._get_trtllm_workspace(device)
+         k_scale, v_scale = self._kv_descales(layer, k_buffer.dtype)
+         output = trtllm_decode(
+             query=q.contiguous(),
+             kv_cache=(kc, vc),
+-            workspace_buffer=self._trtllm_workspace,
++            workspace_buffer=workspace,
+             block_tables=block_tables,
+             seq_lens=valid_counts,
+             max_seq_len=stride,
+--- a/sgl-workspace/sglang/python/sglang/srt/mem_cache/kv_cache_configurator.py
++++ b/sgl-workspace/sglang/python/sglang/srt/mem_cache/kv_cache_configurator.py
+@@ -1569,11 +1569,13 @@
+             )
+         else:
+             pool_class = QSATokenToKVPool
++            draft_window = max_speculative_num_draft_tokens() or 0
+             extra_args.update(
+                 qsa_index_kv_heads=qsa_profile.kv_heads,
+                 qsa_index_head_dim=qsa_profile.head_dim,
+                 qsa_compress_ratio=qsa_profile.compress_ratio,
+                 qsa_token_topk=qsa_profile.budget,
++                qsa_pending_ring_size=qsa_profile.compress_ratio + draft_window,
+                 num_request_slots=req_to_token_pool.req_to_token.shape[0],
+             )
+         token_to_kv_pool = pool_class(
+--- a/sgl-workspace/sglang/python/sglang/srt/mem_cache/qsa_kv_pool.py
++++ b/sgl-workspace/sglang/python/sglang/srt/mem_cache/qsa_kv_pool.py
+@@ -41,11 +41,8 @@
+     ) -> int:
+         """Per-token cost of the QSA index caches: the compressed keys only.
+ 
+-        Pre-compression state is a per-request ring of ``compress_ratio``
+-        slots (the pending group's members), not a per-token cache, so it
+-        does not price per token; its total is bounded by the request-slot
+-        count and stays outside this budget like the other per-request
+-        buffers.
++        Pre-compression state is a small per-request ring, not a per-token
++        cache, so it does not price per token.
+         """
+         index_k_bytes = _index_k_bytes(
+             kv_heads=kv_heads, head_dim=head_dim, dtype=cls.index_state_dtype
+@@ -68,6 +65,7 @@
+         qsa_index_head_dim: int,
+         qsa_compress_ratio: int,
+         qsa_token_topk: int,
++        qsa_pending_ring_size: int,
+         num_request_slots: int,
+         enable_memory_saver: bool = False,
+         enable_kv_cache_copy: bool = False,
+@@ -114,6 +112,7 @@
+                 qsa_index_head_dim,
+                 qsa_compress_ratio,
+                 qsa_token_topk,
++                qsa_pending_ring_size,
+             )
+             <= 0
+         ):
+@@ -121,6 +120,13 @@
+         if qsa_token_topk % qsa_compress_ratio != 0:
+             raise ValueError("qsa_token_topk must be divisible by qsa_compress_ratio")
+         self.qsa_compress_ratio = int(qsa_compress_ratio)
++        self.qsa_pending_ring_size = int(qsa_pending_ring_size)
++        if self.qsa_pending_ring_size < self.qsa_compress_ratio:
++            raise ValueError(
++                "QSA pending ring must hold at least one compression group: "
++                f"ring={self.qsa_pending_ring_size}, "
++                f"ratio={self.qsa_compress_ratio}"
++            )
+         self.qsa_index_head_dim = int(qsa_index_head_dim)
+         self.qsa_index_kv_heads = int(qsa_index_kv_heads)
+         self.qsa_token_topk = int(qsa_token_topk)
+@@ -130,21 +136,15 @@
+         # seen by the scoring kernels is one full-KV page's worth of groups.
+         self.qsa_compressed_page_size = page_size // self.qsa_compress_ratio
+         self.qsa_compressed_capacity = -(state_size // -self.qsa_compress_ratio)
+-        # Pre-compression index-K state is a per-request RING, not a
+-        # per-token cache: once a group's compressed key is written, its raw
+-        # members are never read again, and page-granular prefix sharing
+-        # keeps every extend chunk group-aligned, so the only state that
+-        # must survive a forward is the pending group's members -- at most
+-        # ``ratio`` tokens per request, addressed as
+-        # ``req_pool_idx * ratio + position % ratio``. Request slot 0 is
+-        # never allocated, so ring rows [0, ratio) double as the inert dump
+-        # for tokens whose group already compressed in the same forward.
++        # The ring spans one pending group plus the speculative window. This
++        # prevents uncommitted future rows from overwriting a committed tail.
++        # Request slot 0 remains the inert dump for completed extend groups.
+         if num_request_slots <= 0:
+             raise ValueError(
+                 f"QSA pending ring needs request slots, got {num_request_slots}"
+             )
+         self.qsa_num_request_slots = int(num_request_slots)
+-        ring_slots = self.qsa_num_request_slots * self.qsa_compress_ratio
++        ring_slots = self.qsa_num_request_slots * self.qsa_pending_ring_size
+         self.qsa_key_state_buffer_pool = [
+             torch.zeros(
+                 (ring_slots, self.qsa_index_kv_heads, self.qsa_index_head_dim),
+--- a/sgl-workspace/sglang/python/sglang/srt/model_executor/model_runner.py
++++ b/sgl-workspace/sglang/python/sglang/srt/model_executor/model_runner.py
+@@ -795,9 +795,28 @@
+ 
+     def max_decode_logits_rows(self) -> int:
+         """Rows the shared logits buffer needs."""
+-        num_tokens_per_req = self.decode_num_tokens_per_req()
+-        capture_bs, _ = get_batch_sizes_to_capture(self, num_tokens_per_req)
+-        return max(capture_bs) * num_tokens_per_req
++        from sglang.srt.runtime_context import max_speculative_num_draft_tokens
++        from sglang.srt.speculative.adaptive_spec_params import (
++            resolve_candidate_steps_from_config,
++        )
++
++        spec = get_spec()
++        draft_token_counts = [max_speculative_num_draft_tokens()]
++        if spec.speculative_adaptive:
++            draft_token_counts.extend(
++                steps + 1
++                for steps in resolve_candidate_steps_from_config(
++                    spec.speculative_adaptive_config
++                )
++            )
++        max_rows = 0
++        for draft_tokens in draft_token_counts:
++            num_tokens_per_req = self.decode_num_tokens_per_req(
++                num_draft_tokens=draft_tokens
++            )
++            capture_bs, _ = get_batch_sizes_to_capture(self, num_tokens_per_req)
++            max_rows = max(max_rows, max(capture_bs) * num_tokens_per_req)
++        return max_rows
+ 
+     def alloc_memory_pool(self, memory_pool_config: Optional[MemoryPoolConfig] = None):
+         """Allocate KV cache memory pools only (no backends or cuda graphs)."""
+--- a/sgl-workspace/sglang/python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py
++++ b/sgl-workspace/sglang/python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py
+@@ -97,6 +97,9 @@
+ from sglang.srt.model_executor.runner_utils.deepep_adapter import (
+     DeepEPCudaGraphRunnerAdapter,
+ )
++from sglang.srt.model_executor.runner_utils.pool import (
++    get_or_create_global_graph_capture_stream,
++)
+ from sglang.srt.model_executor.runner_utils.shared_read_event import make_external_event
+ from sglang.srt.multiplex.pdmux_context import get_current_stream_idx, get_stream_groups
+ from sglang.srt.runtime_context import get_flags, get_parallel, get_spec
+@@ -1042,7 +1045,11 @@
+         # can reuse the memory pool allocated for the large shapes.
+         with freeze_gc(self.model_runner.server_args.enable_cudagraph_gc):
+             if not self.enable_pdmux:
+-                with graph_capture() as graph_capture_context, profile_context as prof:
++                with (
++                    graph_capture(stream=get_or_create_global_graph_capture_stream())
++                    as graph_capture_context,
++                    profile_context as prof,
++                ):
+                     self.stream = graph_capture_context.stream
+                     with self.backend.capture_session(self.stream):
+                         self._capture_one_stream()
+@@ -1221,7 +1228,7 @@
+                     dsa_variant,
+                 )
+                 post_warmup_hook = getattr(
+-                    self.model_runner.attn_backend,
++                    attn_backend,
+                     "on_after_cuda_graph_warmup",
+                     None,
+                 )
+--- a/sgl-workspace/sglang/python/sglang/srt/model_executor/runner_utils/pool.py
++++ b/sgl-workspace/sglang/python/sglang/srt/model_executor/runner_utils/pool.py
+@@ -20,7 +20,7 @@
+ 
+ from typing import Any, Optional
+ 
+-from sglang.srt.runtime_context import get_resources
++from sglang.srt.runtime_context import get_resources, get_stream
+ 
+ 
+ def get_global_graph_memory_pool() -> Optional[Any]:
+@@ -38,3 +38,8 @@
+     if resources.graph_memory_pool is None:
+         resources.graph_memory_pool = device_module.graph_pool_handle()
+     return resources.graph_memory_pool
++
++
++def get_or_create_global_graph_capture_stream() -> Any:
++    """Reuse allocator scratch across serial CUDA graph captures."""
++    return get_stream("cuda_graph_capture")
+--- a/sgl-workspace/sglang/python/sglang/srt/speculative/draft_utils.py
++++ b/sgl-workspace/sglang/python/sglang/srt/speculative/draft_utils.py
+@@ -121,11 +121,14 @@
+                 # the intentional eager draft-extend path and never fall
+                 # back to a dense backend.
+                 return None
+-            # Compressed QSA draft-extend uses the draft model runner's own
+-            # (QSA-wrapped hybrid) backend.  Its replay path pads the
+-            # variable accepted-token rows to the captured static width, so
+-            # the draft-extend CUDA graph expresses the dynamic accept count.
+-            return self.draft_model_runner.attn_backend
++            # Each depth owns its graph metadata; reinitializing a shared
++            # backend would leave older graphs reading abandoned buffers.
++            runner = self.draft_model_runner
++            backup_init = runner.init_new_workspace
++            try:
++                return runner._get_attention_backend(init_new_workspace=True)
++            finally:
++                runner.init_new_workspace = backup_init
+ 
+         backend_map = {
+             "flashinfer": self._create_flashinfer_prefill_backend,
+--- a/sgl-workspace/sglang/python/sglang/srt/speculative/eagle_draft_extend_cuda_graph_runner.py
++++ b/sgl-workspace/sglang/python/sglang/srt/speculative/eagle_draft_extend_cuda_graph_runner.py
+@@ -126,13 +126,13 @@
+         self.capture_forward_mode = self.forward_mode
+         self.capture_hidden_mode = CaptureHiddenMode.LAST
+ 
+-        self.capture_bs, _ = get_batch_sizes_to_capture(model_runner)
+-
+         # Static capture width: full tree width (num_draft_tokens), not
+         # num_steps + 1 -- topk > 1 draft-extend overflows the buffers.
+         self.captured_req_width = resolve_num_tokens_per_req(
+-            phase="draft_extend", server_args=model_runner.server_args
+-        )
++            phase="draft_extend", server_args=model_runner.server_args,
++            num_draft_tokens=eagle_worker.speculative_num_draft_tokens,
++        )
++        self.capture_bs, _ = get_batch_sizes_to_capture(model_runner, self.captured_req_width)
+         self.max_bs = max(self.capture_bs)
+         self.max_num_token = self.max_bs * self.captured_req_width
+ 
+--- a/sgl-workspace/sglang/python/sglang/srt/speculative/eagle_worker_v2.py
++++ b/sgl-workspace/sglang/python/sglang/srt/speculative/eagle_worker_v2.py
+@@ -163,7 +163,7 @@
+ 
+         source = lm_head.weight
+         rows, columns = source.shape
+-        weight_amax = source.abs().nan_to_num().amax().float()
++        weight_amax = source.abs().nan_to_num_().amax().float()
+         weight_scale = torch.where(
+             weight_amax > 0,
+             weight_amax / (448.0 * 6.0),
+@@ -302,6 +302,8 @@
+         self.tree_mask_mode = default_tree_mask_mode()
+ 
+         self.plan_stream, self.plan_stream_ctx = get_plan_stream(self.device)
++        self.init_token_map()
++        self.init_lm_head()
+ 
+     def alloc_memory_pool(
+         self,
+@@ -317,9 +319,6 @@
+             req_to_token_pool=req_to_token_pool,
+             token_to_kv_pool_allocator=token_to_kv_pool_allocator,
+         )
+-        self.init_token_map()
+-        self.init_lm_head()
+-
+         if get_spec().speculative_use_rejection_sampling:
+             target_vocab_size = self.target_worker.model_config.vocab_size
+             draft_vocab_size = (
+@@ -422,9 +421,8 @@
+ 
+         else:
+             if self.hot_token_id is not None:
+-                head = head.clone()
+                 self.hot_token_id = self.hot_token_id.to(head.device)
+-                head.data = head.data[self.hot_token_id]
++                head = head.detach().index_select(0, self.hot_token_id)
+ 
+             # Share the embedding and lm_head
+             self.draft_runner.model.set_embed_and_head(embed, head)
+@@ -481,15 +479,6 @@
+             or self.draft_extend_attn_backend is None
+         ):
+             return
+-        if get_spec().speculative_adaptive:
+-            # Adaptive candidates rebuild this worker per step count around
+-            # one shared draft-extend backend; the shared selection state is
+-            # not sized or validated for that regime.
+-            logger.warning(
+-                "index_share_for_mtp_iteration is disabled under adaptive "
+-                "speculative decoding"
+-            )
+-            return
+         layer_ids = sorted(
+             {
+                 module.layer_id
+@@ -501,8 +490,12 @@
+             return
+         from sglang.srt.layers.attention.qsa.glue import resolve_qsa_sparse_backend
+ 
+-        extend_backend = resolve_qsa_sparse_backend(self.draft_extend_attn_backend)
+-        state = getattr(extend_backend, "_mtp_shared_sparse_indices", None)
++        from sglang.srt.runtime_context import max_speculative_num_draft_tokens
++
++        # All depth-specific graphs must read the most recent draft-extend,
++        # including immediately after switching to a different depth.
++        tail_width = max_speculative_num_draft_tokens()
++        state = getattr(self, "_qsa_mtp_shared_indices", None)
+         if state is None:
+             pool = self.draft_runner.token_to_kv_pool
+             # The expansion emits token_topk + ratio - 1 columns (top-k blocks
+@@ -512,9 +505,12 @@
+                 layer_ids=layer_ids,
+                 num_requests=self.draft_runner.req_to_token_pool.req_to_token.shape[0],
+                 token_topk=expanded_width,
+-                tail_width=get_spec().speculative_num_steps + 1,
++                tail_width=tail_width,
+                 device=self.draft_runner.device,
+             )
++            self._qsa_mtp_shared_indices = state
++        elif state.tail_width != tail_width:
++            raise RuntimeError("QSA shared selection capacity changed after graph capture")
+         for backend in (self.draft_attn_backend, self.draft_extend_attn_backend):
+             resolved = resolve_qsa_sparse_backend(backend)
+             assert hasattr(resolved, "set_mtp_shared_sparse_indices"), type(resolved)
+@@ -661,6 +657,8 @@
+             self.cuda_graph_runner_for_draft_extend = Device2ExtendCudaGraphRunner[
+                 self.target_worker.device
+             ](self)
++            if _is_cuda:
++                assert self.cuda_graph_runner_for_draft_extend.captured_req_width == self.speculative_num_draft_tokens
+             # draft_extend is the step's last shared-buffer-reading phase; its
+             # read-done event is what the scheduler's WAR barrier waits on.
+             after_mem = get_available_gpu_memory(self.device, self.gpu_id)
+--- a/sgl-workspace/sglang/python/sglang/srt/speculative/spec_utils.py
++++ b/sgl-workspace/sglang/python/sglang/srt/speculative/spec_utils.py
+@@ -111,7 +111,11 @@
+     if phase == "draft_decode":
+         return server_args.speculative_eagle_topk
+     if phase == "draft_extend":
+-        return server_args.speculative_num_draft_tokens
++        return (
++            server_args.speculative_num_draft_tokens
++            if num_draft_tokens is None
++            else num_draft_tokens
++        )
+     if phase == "target_verify":
+         if num_draft_tokens is None:
+             num_draft_tokens = server_args.speculative_num_draft_tokens
+@@ -843,6 +847,32 @@
+     return last_correct_step_indices, mamba_steps_to_track
+ 
+ 
++def _commit_replayssm_ple_after_verify(
++    attn_backend,
++    state_batch_indices: torch.Tensor,
++    last_correct_step_indices: torch.Tensor,
++    mamba_track_indices: Optional[torch.Tensor],
++    mamba_steps_to_track: Optional[torch.Tensor],
++) -> None:
++    """Commit only PLE; ReplaySSM has no intermediate SSM to scatter."""
++    update_ple = getattr(attn_backend, "_update_ple_state_after_mtp_verify", None)
++    if update_ple is None:
++        return
++    # Pool lookups and tracking ids are virtual; PLE tensors use physical slots.
++    # Restrict graph-padded slot buffers to the active verify rows.
++    bs = last_correct_step_indices.shape[0]
++    translate = attn_backend.linear_attn_backend._translate_mamba_indices
++    state_indices = translate(state_batch_indices[:bs])
++    if mamba_track_indices is not None:
++        mamba_track_indices = translate(mamba_track_indices[:bs])
++    update_ple(
++        state_indices,
++        last_correct_step_indices,
++        mamba_track_indices,
++        mamba_steps_to_track,
++    )
++
++
+ def commit_mamba_states_after_verify(
+     target_worker: TpModelWorker,
+     batch: ScheduleBatch,
+@@ -906,6 +936,13 @@
+             mamba_track_indices=batch.mamba_track_indices,
+             mamba_steps_to_track=mamba_steps_to_track,
+             null_block_id=-1,
++        )
++        _commit_replayssm_ple_after_verify(
++            model_runner.attn_backend,
++            state_batch_indices,
++            last_correct_step_indices,
++            batch.mamba_track_indices,
++            mamba_steps_to_track,
+         )
+         return
+ 
+@@ -940,7 +977,7 @@
+         )
+         # Roll back / commit the conv state to the last accepted draft step
+         # (same logic as the recurrent commit, but conv-only).
+-        last_correct_step_indices, _ = _verify_commit_step_indices(
++        last_correct_step_indices, mamba_steps_to_track = _verify_commit_step_indices(
+             batch=batch,
+             accept_index=accept_index,
+             accept_lens=accept_lens,
+@@ -952,11 +989,19 @@
+             state_batch_indices,
+             last_correct_step_indices,
+         )
++        _commit_replayssm_ple_after_verify(
++            model_runner.attn_backend,
++            state_batch_indices,
++            last_correct_step_indices,
++            batch.mamba_track_indices,
++            mamba_steps_to_track,
++        )
+         # NOTE: radix mamba prefix-caching (mamba_track / extra_buffer) would need
+         # a device-side force-flush so `temporal` reflects the ring before a
+         # snapshot; not wired for Part B (server_args forbids extra_buffer with
+         # --enable-linear-replayssm-spec), so the per-track scatters are intentionally
+-        # skipped here.
++        # skipped here for SSM/conv. PLE tracking above is independent; it does
++        # not make legacy-ring SSM prefix-cache snapshots valid.
+         return
+ 
+     # KDA ReplaySSM (fold-every-commit): KDA keeps its own recurrent verify kernel
+--- /dev/null
++++ b/usr/local/lib/python3.12/dist-packages/qsa_pack.py
+@@ -0,0 +1,39 @@
++"""Stable sparse-index packing without host readbacks or sort kernels."""
++
++import torch
++import triton
++import triton.language as tl
++
++
++@triton.jit
++def _pack_indices(indices, lengths, output, width: tl.constexpr,
++                  row_stride: tl.constexpr, col_stride: tl.constexpr,
++                  length_stride: tl.constexpr, BLOCK: tl.constexpr):
++    row = tl.program_id(0)
++    columns = tl.arange(0, BLOCK)
++    values = tl.load(indices + row * row_stride + columns * col_stride,
++                     mask=columns < width, other=-1)
++    length = tl.load(lengths + row * length_stride)
++    valid = (columns < width) & (values >= 0) & (values < length)
++    prefix = tl.cumsum(valid.to(tl.int32), axis=0)
++    total = tl.sum(valid.to(tl.int32), axis=0)
++    # Valid and invalid lanes form disjoint, complete destination permutations.
++    # Every real column writes once, so no fill kernel or scatter race is needed.
++    destination = tl.where(valid, prefix - 1, total + columns - prefix)
++    tl.store(output + row * width + destination, tl.where(valid, values, -1),
++             mask=columns < width)
++
++
++def compact_sparse_indices(indices, lengths):
++    if (indices.ndim != 2 or lengths.ndim != 1 or indices.shape[0] != lengths.numel()
++            or indices.dtype not in (torch.int32, torch.int64)
++            or lengths.dtype not in (torch.int32, torch.int64)
++            or indices.device != lengths.device or not indices.is_cuda):
++        raise ValueError('Expected CUDA integer [rows, width] indices and [rows] lengths')
++    rows, width = indices.shape
++    output = torch.empty((rows, width), dtype=indices.dtype, device=indices.device)
++    if rows and width:
++        block = triton.next_power_of_2(width)
++        _pack_indices[(rows,)](indices, lengths, output, width, *indices.stride(),
++                              lengths.stride(0), block, num_warps=4 if block <= 2048 else 8)
++    return output
+--- a/usr/local/lib/python3.12/dist-packages/sglang_ple_ssd/plugin.py
++++ b/usr/local/lib/python3.12/dist-packages/sglang_ple_ssd/plugin.py
+@@ -15,7 +15,7 @@
+         "f406977eb2373937393241f453477867f7dc943bd4839216db8fe66fa9f921d8"
+     ),
+     "sglang.srt.model_executor.runner.decode_cuda_graph_runner": (
+-        "96a92a7c60a8ec81c606721ec7d5cf7588173a55505e58f7f231757a056029df"
++        "551493108ae0bb816cf64b7418e3e4b8d6458e8e8dd93263963eeef0f67e635d"
+     ),
+     "sglang.srt.server_args": (
+         "177600230a33a7badf94f49c3dff7d5aae3762f03a1152c8ea62302d188734d8"

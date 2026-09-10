@@ -1,0 +1,15 @@
+{
+  "observed_on": "2026-09-10",
+  "python": "3.12.3",
+  "architecture": "x86_64",
+  "packages": {
+    "torch": "2.13.0+cu130",
+    "triton": "3.7.1",
+    "transformers": "5.12.1",
+    "flashinfer-python": "0.6.17",
+    "flashinfer-cubin": "0.6.17",
+    "flashinfer-jit-cache": "0.6.17+cu130",
+    "sglang": "0.0.0.dev1+gd91c3682b",
+    "sglang-ple-ssd": "0.1.0"
+  }
+}

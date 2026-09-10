@@ -1,0 +1,14 @@
+{
+  "context_length": 262144,
+  "max_total_tokens": 262144,
+  "speculative_num_steps": 3,
+  "speculative_num_draft_tokens": 4,
+  "speculative_adaptive": true,
+  "enable_linear_replayssm_spec": true,
+  "disable_cuda_graph": false,
+  "mamba_ssm_dtype": "float32",
+  "kv_cache_dtype": "fp8_e4m3",
+  "speculative_accept_threshold_single": 1.0,
+  "speculative_accept_threshold_acc": 1.0,
+  "served_model_name": "RadixArk/Qwen3.8-Flash-Next-NVFP4"
+}

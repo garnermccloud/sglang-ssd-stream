@@ -1,0 +1,6 @@
+{
+  "list": "Produce a numbered list from 1 through 300. Each line must contain the number followed by a short unique sentence. Do not stop before 300.",
+  "prose": "Design a fault-tolerant job scheduler for a five-node homelab. Explain the state model, lease protocol, idempotency strategy, recovery after network partitions, observability, and a concrete test plan. Be precise and use the full available answer budget.",
+  "code": "Write a complete Python implementation of a durable SQLite-backed job queue with leases, idempotency keys, retries, transaction-safe claim operations, and tests for worker crashes. Include the code and tests, not just a sketch.",
+  "reasoning": "A five-node service must assign jobs exactly once despite crashes and network partitions. Is that possible when jobs call an external nontransactional API that can time out after completing its side effect? Analyze the impossibility boundary, construct a precise failure timeline, and design the strongest implementable contract. Work through all failure cases carefully."
+}

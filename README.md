@@ -81,6 +81,21 @@ withdrawn upstream model cannot erase the revision already on disk.
 
 ## Measured performance
 
+### September 2026 RTX PRO optimization bundle
+
+The [qualified adaptive-MTP source bundle](optimizations/rtx-pro-6000-20260909/README.md)
+publishes the exact runtime changes deployed on September 9, with file hashes,
+before/after patches, and 48 measured timing records. In a matched code-generation
+workload, median throughput rose from **238.76 to 282.12 tok/s (+18.16%)**.
+List, prose, and reasoning changes were +6.01%, +3.71%, and +0.38%; this is not a
+universal speedup or an agent-quality claim. Model weights did not change.
+
+This versioned source overlay targets a separate historical SGLang/SSD runtime.
+**The normal installer does not enable it.** Porting and clean-install acceptance
+are still required before adopting it in the current default profile. Its
+matched results are not directly comparable with the earlier SSD-versus-RAM
+measurements below.
+
 ### RTX PRO 6000 Blackwell
 
 Matched tests on an RTX PRO 6000 Blackwell used Qwen3.8 Flash-Next NVFP4,

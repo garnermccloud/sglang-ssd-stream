@@ -1,0 +1,382 @@
+{
+  "list": [
+    {
+      "wall_s": 5.491515644011088,
+      "wall_tps": 186.46946788119402,
+      "ttft_s": 0.07817119895480573,
+      "stream_tps": 188.97888208896052,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 379,
+      "correct_drafts_histogram": [
+        89,
+        87,
+        49,
+        154
+      ],
+      "reported_proposed_drafts": 1137,
+      "proposed_drafts": 1137,
+      "accepted_drafts": 647,
+      "accepted_per_round": 2.7018469656992083,
+      "conditional_acceptance": [
+        0.7651715039577837,
+        0.7,
+        0.7586206896551724
+      ],
+      "wall_ms_per_round": 14.489487187364347,
+      "fixed_round_cost_perfect_acceptance_tps": 276.06222002723644,
+      "num_retractions": 0,
+      "output_hash": "a56db32bef0a3cf1e702b003f6fd8cbb335cf02c7a064a51f05b23c3a87f7d95"
+    },
+    {
+      "wall_s": 5.930485246935859,
+      "wall_tps": 172.66715241034896,
+      "ttft_s": 0.08063855499494821,
+      "stream_tps": 174.87754248402703,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 413,
+      "correct_drafts_histogram": [
+        121,
+        110,
+        44,
+        138
+      ],
+      "reported_proposed_drafts": 1239,
+      "proposed_drafts": 1239,
+      "accepted_drafts": 612,
+      "accepted_per_round": 2.4794188861985473,
+      "conditional_acceptance": [
+        0.7070217917675545,
+        0.6232876712328768,
+        0.7582417582417582
+      ],
+      "wall_ms_per_round": 14.359528442943969,
+      "fixed_round_cost_perfect_acceptance_tps": 278.5606794745083,
+      "num_retractions": 0,
+      "output_hash": "321ad14b06de1ee6d93ba0fc1185c589e24834226b65029e00f5e20d99752329"
+    },
+    {
+      "wall_s": 5.8572601430350915,
+      "wall_tps": 174.82576750797818,
+      "ttft_s": 0.0947008189978078,
+      "stream_tps": 177.52649959484063,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 404,
+      "correct_drafts_histogram": [
+        131,
+        81,
+        37,
+        155
+      ],
+      "reported_proposed_drafts": 1212,
+      "proposed_drafts": 1212,
+      "accepted_drafts": 620,
+      "accepted_per_round": 2.5346534653465347,
+      "conditional_acceptance": [
+        0.6757425742574258,
+        0.7032967032967034,
+        0.8072916666666666
+      ],
+      "wall_ms_per_round": 14.49816867087894,
+      "fixed_round_cost_perfect_acceptance_tps": 275.89691434852807,
+      "num_retractions": 0,
+      "output_hash": "c441d8d264671deb56e4d194d4f01dc7d066bb7b3fdd1cb12ead90ee72691ad8"
+    }
+  ],
+  "prose": [
+    {
+      "wall_s": 5.363658157992177,
+      "wall_tps": 190.9144784840879,
+      "ttft_s": 0.07994903600774705,
+      "stream_tps": 193.61559198285548,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 374,
+      "correct_drafts_histogram": [
+        83,
+        86,
+        50,
+        155
+      ],
+      "reported_proposed_drafts": 1122,
+      "proposed_drafts": 1122,
+      "accepted_drafts": 651,
+      "accepted_per_round": 2.7379679144385025,
+      "conditional_acceptance": [
+        0.7780748663101604,
+        0.7044673539518901,
+        0.7560975609756098
+      ],
+      "wall_ms_per_round": 14.341331973241115,
+      "fixed_round_cost_perfect_acceptance_tps": 278.91412091034715,
+      "num_retractions": 0,
+      "output_hash": "3a5967f3a11c78c0b905228151f7c6a3330177163c96e93593e23cab0155b42e"
+    },
+    {
+      "wall_s": 5.55182292801328,
+      "wall_tps": 184.44392288398117,
+      "ttft_s": 0.08084798802156001,
+      "stream_tps": 186.98844355408107,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 383,
+      "correct_drafts_histogram": [
+        102,
+        68,
+        66,
+        147
+      ],
+      "reported_proposed_drafts": 1149,
+      "proposed_drafts": 1149,
+      "accepted_drafts": 641,
+      "accepted_per_round": 2.6736292428198434,
+      "conditional_acceptance": [
+        0.7336814621409922,
+        0.7580071174377224,
+        0.6901408450704225
+      ],
+      "wall_ms_per_round": 14.495621221966788,
+      "fixed_round_cost_perfect_acceptance_tps": 275.94540025220624,
+      "num_retractions": 0,
+      "output_hash": "0a0d2f034c99c98bafd523f94985566743b70d3f8f079afcfd62bb837cf6df2c"
+    },
+    {
+      "wall_s": 5.303890008945018,
+      "wall_tps": 193.06584380012077,
+      "ttft_s": 0.07454422803130001,
+      "stream_tps": 195.62913552167558,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 368,
+      "correct_drafts_histogram": [
+        79,
+        77,
+        57,
+        155
+      ],
+      "reported_proposed_drafts": 1104,
+      "proposed_drafts": 1104,
+      "accepted_drafts": 656,
+      "accepted_per_round": 2.782608695652174,
+      "conditional_acceptance": [
+        0.7853260869565217,
+        0.7335640138408305,
+        0.7311320754716981
+      ],
+      "wall_ms_per_round": 14.412744589524506,
+      "fixed_round_cost_perfect_acceptance_tps": 277.5321504626736,
+      "num_retractions": 0,
+      "output_hash": "c9c70cd8342152b3958d71855255909b8bf4b314e83e4020f18cef561f8e6c42"
+    }
+  ],
+  "code": [
+    {
+      "wall_s": 4.217019877047278,
+      "wall_tps": 242.82550944886611,
+      "ttft_s": 0.07519488409161568,
+      "stream_tps": 246.99626675399767,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 297,
+      "correct_drafts_histogram": [
+        21,
+        32,
+        35,
+        209
+      ],
+      "reported_proposed_drafts": 891,
+      "proposed_drafts": 891,
+      "accepted_drafts": 729,
+      "accepted_per_round": 3.4478114478114477,
+      "conditional_acceptance": [
+        0.9292929292929293,
+        0.8840579710144928,
+        0.8565573770491803
+      ],
+      "wall_ms_per_round": 14.19872012473831,
+      "fixed_round_cost_perfect_acceptance_tps": 281.7155324465361,
+      "num_retractions": 0,
+      "output_hash": "0b34e0c1d4a7a2701090bba6cb8b5aa0af27eedcb4cae1069b10896cc5ae47c8"
+    },
+    {
+      "wall_s": 4.402617451036349,
+      "wall_tps": 232.58891134385448,
+      "ttft_s": 0.0771809850120917,
+      "stream_tps": 236.5105620070228,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 308,
+      "correct_drafts_histogram": [
+        36,
+        34,
+        32,
+        206
+      ],
+      "reported_proposed_drafts": 924,
+      "proposed_drafts": 924,
+      "accepted_drafts": 716,
+      "accepted_per_round": 3.324675324675325,
+      "conditional_acceptance": [
+        0.8831168831168831,
+        0.875,
+        0.865546218487395
+      ],
+      "wall_ms_per_round": 14.294212503364768,
+      "fixed_round_cost_perfect_acceptance_tps": 279.8335339605749,
+      "num_retractions": 0,
+      "output_hash": "794f49236010812a98bff782fc2eb90b23d25d389d657a55df898fdb7f9e8a8c"
+    },
+    {
+      "wall_s": 4.2438724669627845,
+      "wall_tps": 241.28906039743623,
+      "ttft_s": 0.07912776502780616,
+      "stream_tps": 245.63565835548945,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 299,
+      "correct_drafts_histogram": [
+        22,
+        27,
+        50,
+        200
+      ],
+      "reported_proposed_drafts": 897,
+      "proposed_drafts": 897,
+      "accepted_drafts": 727,
+      "accepted_per_round": 3.4247491638795986,
+      "conditional_acceptance": [
+        0.9264214046822743,
+        0.9025270758122743,
+        0.8
+      ],
+      "wall_ms_per_round": 14.193553401213325,
+      "fixed_round_cost_perfect_acceptance_tps": 281.81808226106807,
+      "num_retractions": 0,
+      "output_hash": "c67254f915cec1cc9c8299da149fa3693aec7ac66122ce1a68b4190cdbf4144a"
+    }
+  ],
+  "reasoning": [
+    {
+      "wall_s": 6.287758901948109,
+      "wall_tps": 162.85611709487438,
+      "ttft_s": 0.0794443489285186,
+      "stream_tps": 164.78005028474777,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 435,
+      "correct_drafts_histogram": [
+        153,
+        102,
+        53,
+        127
+      ],
+      "reported_proposed_drafts": 1305,
+      "proposed_drafts": 1305,
+      "accepted_drafts": 589,
+      "accepted_per_round": 2.354022988505747,
+      "conditional_acceptance": [
+        0.6482758620689655,
+        0.6382978723404256,
+        0.7055555555555556
+      ],
+      "wall_ms_per_round": 14.454618165397953,
+      "fixed_round_cost_perfect_acceptance_tps": 276.72816771980604,
+      "num_retractions": 0,
+      "output_hash": "35b58cf770c0c38950b1d6a547195c2bef63e88e6b3d8901c66dae6d5b468a25"
+    },
+    {
+      "wall_s": 6.121574094053358,
+      "wall_tps": 167.27723691113007,
+      "ttft_s": 0.07753388897981495,
+      "stream_tps": 169.25870514804132,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 426,
+      "correct_drafts_histogram": [
+        140,
+        96,
+        67,
+        123
+      ],
+      "reported_proposed_drafts": 1278,
+      "proposed_drafts": 1278,
+      "accepted_drafts": 599,
+      "accepted_per_round": 2.403755868544601,
+      "conditional_acceptance": [
+        0.6713615023474179,
+        0.6643356643356644,
+        0.6473684210526316
+      ],
+      "wall_ms_per_round": 14.369892239561873,
+      "fixed_round_cost_perfect_acceptance_tps": 278.3597770474274,
+      "num_retractions": 0,
+      "output_hash": "0fd1efc464c8cdd24c21ec21582ef176df290035cc958181f8846d4c02037626"
+    },
+    {
+      "wall_s": 6.573157435981557,
+      "wall_tps": 155.78510175256255,
+      "ttft_s": 0.07709186105057597,
+      "stream_tps": 157.4810575609255,
+      "tokens": 1024,
+      "finish_reason": {
+        "type": "length",
+        "length": 1024
+      },
+      "verify_rounds": 456,
+      "correct_drafts_histogram": [
+        173,
+        111,
+        57,
+        115
+      ],
+      "reported_proposed_drafts": 1368,
+      "proposed_drafts": 1368,
+      "accepted_drafts": 570,
+      "accepted_per_round": 2.245614035087719,
+      "conditional_acceptance": [
+        0.6206140350877193,
+        0.607773851590106,
+        0.6686046511627907
+      ],
+      "wall_ms_per_round": 14.414818938556046,
+      "fixed_round_cost_perfect_acceptance_tps": 277.4922124967521,
+      "num_retractions": 0,
+      "output_hash": "8c8148675735f295778cf982021ad296ad41ea31310839549464564ad663fb58"
+    }
+  ]
+}
