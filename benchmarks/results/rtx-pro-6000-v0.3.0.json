@@ -1,0 +1,1249 @@
+{
+  "date": "2026-09-10",
+  "hardware": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 96 GB",
+  "source_commit": "9ee402523c2d5fee67b30c1aa18ebce69aadb595",
+  "ci_run": 34513662391,
+  "tested_x86_64_wheel_sha256": "2a1dc5a64b9986024d53b9b12bbb41ed000312ee4d2946297ee0fa61309a1852",
+  "sglang_commit": "3df8e1e7dbc5807696622afe2929b6c33c185ca3",
+  "model_repository": "garnermccloud/Qwen3.8-Flash-Next-NVFP4-SSD-Stream",
+  "model_revision": "4d271d6fc27c2d7fc9e2c669b67265f539fe5482",
+  "status": "functional-checks-passed; workload-specific performance measured",
+  "protocol": "Control before; candidate before and after functional checks; control after. One warmup and three measured 1024-token requests per workload per phase. Six measurements per arm/workload, 48 measured requests total.",
+  "interruption": "The connection ended after the 262K test. The watchdog restored production, authenticated readiness was verified, and the remaining control phase ran in a separate supervised pause. Completed measurements were preserved.",
+  "limitations": "Small synthetic sample with output variability; not a universal speedup or a general quality evaluation. The control uses the public fixed-four base, not the earlier production runtime with FRSpec, draft-head NVFP4 and lowm.",
+  "checks": {
+    "cpu_tests_per_architecture": 65,
+    "cpu_architectures": [
+      "x86_64",
+      "aarch64"
+    ],
+    "gpu_packing_tests": 5,
+    "ssd_gpu_smoke": true,
+    "functional": [
+      {
+        "test": "tool_17_25",
+        "passed": true,
+        "wall_s": 1.0913214250467718,
+        "usage": {
+          "prompt_tokens": 304,
+          "total_tokens": 342,
+          "completion_tokens": 38,
+          "prompt_tokens_details": null,
+          "reasoning_tokens": 0
+        }
+      },
+      {
+        "test": "tool_return_17_25",
+        "passed": true,
+        "wall_s": 0.11551184905692935,
+        "usage": {
+          "prompt_tokens": 373,
+          "total_tokens": 376,
+          "completion_tokens": 3,
+          "prompt_tokens_details": null,
+          "reasoning_tokens": 0
+        }
+      },
+      {
+        "test": "tool_-38_107",
+        "passed": true,
+        "wall_s": 0.2561073750257492,
+        "usage": {
+          "prompt_tokens": 305,
+          "total_tokens": 345,
+          "completion_tokens": 40,
+          "prompt_tokens_details": null,
+          "reasoning_tokens": 0
+        }
+      },
+      {
+        "test": "tool_return_-38_107",
+        "passed": true,
+        "wall_s": 0.13195732305757701,
+        "usage": {
+          "prompt_tokens": 376,
+          "total_tokens": 379,
+          "completion_tokens": 3,
+          "prompt_tokens_details": null,
+          "reasoning_tokens": 0
+        }
+      },
+      {
+        "test": "tool_901_-999",
+        "passed": true,
+        "wall_s": 0.302464002976194,
+        "usage": {
+          "prompt_tokens": 306,
+          "total_tokens": 347,
+          "completion_tokens": 41,
+          "prompt_tokens_details": null,
+          "reasoning_tokens": 0
+        }
+      },
+      {
+        "test": "tool_return_901_-999",
+        "passed": true,
+        "wall_s": 0.12669548811390996,
+        "usage": {
+          "prompt_tokens": 379,
+          "total_tokens": 383,
+          "completion_tokens": 4,
+          "prompt_tokens_details": null,
+          "reasoning_tokens": 0
+        }
+      },
+      {
+        "test": "image_red",
+        "passed": true,
+        "wall_s": 0.17343317484483123,
+        "usage": {
+          "prompt_tokens": 86,
+          "total_tokens": 101,
+          "completion_tokens": 15,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "image_tokens": 64
+          },
+          "reasoning_tokens": 0
+        }
+      },
+      {
+        "test": "image_blue",
+        "passed": true,
+        "wall_s": 0.1660970391239971,
+        "usage": {
+          "prompt_tokens": 86,
+          "total_tokens": 101,
+          "completion_tokens": 15,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "image_tokens": 64
+          },
+          "reasoning_tokens": 0
+        }
+      },
+      {
+        "test": "image_green",
+        "passed": true,
+        "wall_s": 0.19427371793426573,
+        "usage": {
+          "prompt_tokens": 86,
+          "total_tokens": 101,
+          "completion_tokens": 15,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "image_tokens": 64
+          },
+          "reasoning_tokens": 0
+        }
+      },
+      {
+        "test": "retrieval_120081",
+        "passed": true,
+        "wall_s": 10.425085406983271,
+        "usage": {
+          "prompt_tokens": 120081,
+          "total_tokens": 120121,
+          "completion_tokens": 40,
+          "prompt_tokens_details": null,
+          "reasoning_tokens": 0
+        }
+      },
+      {
+        "test": "reasoning_crt",
+        "passed": true,
+        "wall_s": 1.7358747629914433,
+        "usage": {
+          "prompt_tokens": 95,
+          "total_tokens": 385,
+          "completion_tokens": 290,
+          "prompt_tokens_details": null,
+          "reasoning_tokens": 280
+        }
+      },
+      {
+        "test": "retrieval_255681",
+        "passed": true,
+        "wall_s": 21.408426644979045,
+        "usage": {
+          "prompt_tokens": 255681,
+          "total_tokens": 255721,
+          "completion_tokens": 40,
+          "prompt_tokens_details": null,
+          "reasoning_tokens": 0
+        }
+      }
+    ],
+    "graph_observations_131k": {
+      "switches_4_to_8": 30,
+      "switches_8_to_4": 30,
+      "logged_decode_graph_true": 275,
+      "logged_decode_graph_false": 0
+    },
+    "production_restored_and_authenticated": true
+  },
+  "summary": {
+    "list": {
+      "control": {
+        "median_tok_s": 148.40196269792506,
+        "min_tok_s": 146.75582072482115,
+        "max_tok_s": 153.6017002049528
+      },
+      "candidate": {
+        "median_tok_s": 151.7121898374232,
+        "min_tok_s": 146.53310434680026,
+        "max_tok_s": 159.83238954415057
+      },
+      "change_percent": 2.2305817789190385
+    },
+    "prose": {
+      "control": {
+        "median_tok_s": 166.52349574990313,
+        "min_tok_s": 159.18563754233736,
+        "max_tok_s": 178.92303620486928
+      },
+      "candidate": {
+        "median_tok_s": 155.88810874369696,
+        "min_tok_s": 152.99672526844245,
+        "max_tok_s": 157.95120996831417
+      },
+      "change_percent": -6.3867185578299175
+    },
+    "code": {
+      "control": {
+        "median_tok_s": 208.7789833851555,
+        "min_tok_s": 199.43087111953,
+        "max_tok_s": 213.89384683990167
+      },
+      "candidate": {
+        "median_tok_s": 217.58611208764285,
+        "min_tok_s": 206.88606797251268,
+        "max_tok_s": 228.33873488385208
+      },
+      "change_percent": 4.218398116365929
+    },
+    "reasoning": {
+      "control": {
+        "median_tok_s": 134.01951403055438,
+        "min_tok_s": 127.92353100494282,
+        "max_tok_s": 139.4081214967026
+      },
+      "candidate": {
+        "median_tok_s": 136.58984230099549,
+        "min_tok_s": 124.74575750318294,
+        "max_tok_s": 143.05561634021703
+      },
+      "change_percent": 1.9178761309753156
+    }
+  },
+  "phases": {
+    "control-before": {
+      "settings": {
+        "context_length": 131072,
+        "max_total_tokens": 131072,
+        "kv_cache_dtype": "fp8_e4m3",
+        "mamba_ssm_dtype": "float32",
+        "speculative_adaptive": false,
+        "enable_linear_replayssm_spec": false,
+        "disable_cuda_graph": false,
+        "speculative_accept_threshold_single": 1.0,
+        "speculative_accept_threshold_acc": 1.0,
+        "speculative_num_steps": 3,
+        "speculative_num_draft_tokens": 4,
+        "served_model_name": "Qwen3.8-Flash-Next-NVFP4-SSD-Stream"
+      },
+      "measurements": {
+        "list": [
+          {
+            "wall_s": 6.889325449010357,
+            "wall_tps": 148.6357420009961,
+            "tokens": 1024,
+            "ttft_s": 0.07822292321361601,
+            "stream_tps": 150.19690451261803,
+            "verify_rounds": 398,
+            "accepted_per_round": 2.5728643216080402,
+            "correct_drafts_histogram": [
+              100,
+              108,
+              50,
+              140
+            ],
+            "num_retractions": 0,
+            "output_hash": "090011b6c1e03db41551c9ae91ee41ffd8fb1034dc8486d979452dd7865a8fcc"
+          },
+          {
+            "wall_s": 6.977576732169837,
+            "wall_tps": 146.75582072482115,
+            "tokens": 1024,
+            "ttft_s": 0.08069687406532466,
+            "stream_tps": 148.32900804436903,
+            "verify_rounds": 403,
+            "accepted_per_round": 2.5409429280397022,
+            "correct_drafts_histogram": [
+              119,
+              94,
+              44,
+              146
+            ],
+            "num_retractions": 0,
+            "output_hash": "b278635f20712940986e4eaedf8a51784f296f4373f4f9bc9d2557e42d2ba5ed"
+          },
+          {
+            "wall_s": 6.756788766942918,
+            "wall_tps": 151.5512820246569,
+            "tokens": 1024,
+            "ttft_s": 0.14453031006269157,
+            "stream_tps": 154.71393679353778,
+            "verify_rounds": 391,
+            "accepted_per_round": 2.6189258312020463,
+            "correct_drafts_histogram": [
+              96,
+              98,
+              57,
+              140
+            ],
+            "num_retractions": 0,
+            "output_hash": "8b63232bef8088971ce95245541eae195eb14d9010b748ad884f94e0f22ba6b7"
+          }
+        ],
+        "prose": [
+          {
+            "wall_s": 6.321859959047288,
+            "wall_tps": 161.97764686871017,
+            "tokens": 1024,
+            "ttft_s": 0.10725252097472548,
+            "stream_tps": 164.61320869011303,
+            "verify_rounds": 366,
+            "accepted_per_round": 2.797814207650273,
+            "correct_drafts_histogram": [
+              80,
+              71,
+              57,
+              158
+            ],
+            "num_retractions": 0,
+            "output_hash": "afe2a94f5d1f040894c60fc36ebb13e7091f17e6d66c46b8550d5c9ae1785f2c"
+          },
+          {
+            "wall_s": 6.432741143042222,
+            "wall_tps": 159.18563754233736,
+            "tokens": 1024,
+            "ttft_s": 0.07957969792187214,
+            "stream_tps": 161.02316623996668,
+            "verify_rounds": 376,
+            "accepted_per_round": 2.723404255319149,
+            "correct_drafts_histogram": [
+              82,
+              90,
+              52,
+              152
+            ],
+            "num_retractions": 0,
+            "output_hash": "61e813c067e831da533afb40be35d5b1b12d2eeff3e6d87f5d5beef39e8d4243"
+          },
+          {
+            "wall_s": 6.114820612128824,
+            "wall_tps": 167.46198538823577,
+            "tokens": 1024,
+            "ttft_s": 0.07108141598291695,
+            "stream_tps": 169.2672301710283,
+            "verify_rounds": 359,
+            "accepted_per_round": 2.852367688022284,
+            "correct_drafts_histogram": [
+              83,
+              58,
+              47,
+              171
+            ],
+            "num_retractions": 0,
+            "output_hash": "946b44cf1bdc30fa4107f7138ee23c781f1436a8d450527bc46d8a0edb8b7b3d"
+          }
+        ],
+        "code": [
+          {
+            "wall_s": 4.876631076913327,
+            "wall_tps": 209.98102662466377,
+            "tokens": 1024,
+            "ttft_s": 0.0940831620246172,
+            "stream_tps": 213.90435963947854,
+            "verify_rounds": 287,
+            "accepted_per_round": 3.56794425087108,
+            "correct_drafts_histogram": [
+              18,
+              25,
+              21,
+              223
+            ],
+            "num_retractions": 0,
+            "output_hash": "62c74f451a0c28166fe33ed625b32a8f1e725f08cb34ba4b1ae872e1e20e3921"
+          },
+          {
+            "wall_s": 4.933110581943765,
+            "wall_tps": 207.57694014564723,
+            "tokens": 1024,
+            "ttft_s": 0.07979367487132549,
+            "stream_tps": 210.78552752724963,
+            "verify_rounds": 290,
+            "accepted_per_round": 3.5310344827586206,
+            "correct_drafts_histogram": [
+              22,
+              24,
+              22,
+              222
+            ],
+            "num_retractions": 0,
+            "output_hash": "1d5d798f2ac532523bf5dc26af06e39704ae2cd3ca2c3a3e5b6c1204c2b02a93"
+          },
+          {
+            "wall_s": 4.955460660159588,
+            "wall_tps": 206.64072832474523,
+            "tokens": 1024,
+            "ttft_s": 0.07765514403581619,
+            "stream_tps": 209.72721910552931,
+            "verify_rounds": 294,
+            "accepted_per_round": 3.4829931972789114,
+            "correct_drafts_histogram": [
+              28,
+              23,
+              20,
+              223
+            ],
+            "num_retractions": 0,
+            "output_hash": "abd44c4d0c5bc4f59d9314c9d2518b801da7a037bb4dc35104dc707724536325"
+          }
+        ],
+        "reasoning": [
+          {
+            "wall_s": 7.7044023629277945,
+            "wall_tps": 132.91102304408514,
+            "tokens": 1024,
+            "ttft_s": 0.08810042683035135,
+            "stream_tps": 134.3178952872991,
+            "verify_rounds": 447,
+            "accepted_per_round": 2.29082774049217,
+            "correct_drafts_histogram": [
+              171,
+              90,
+              71,
+              115
+            ],
+            "num_retractions": 0,
+            "output_hash": "48a33e8cd54a595c97d35b4adb392e769234734b1fd6d06f3f7975792959aa9f"
+          },
+          {
+            "wall_s": 7.612863346002996,
+            "wall_tps": 134.509179195714,
+            "tokens": 1024,
+            "ttft_s": 0.09012740897014737,
+            "stream_tps": 135.9885022740534,
+            "verify_rounds": 443,
+            "accepted_per_round": 2.311512415349887,
+            "correct_drafts_histogram": [
+              156,
+              108,
+              64,
+              115
+            ],
+            "num_retractions": 0,
+            "output_hash": "f8e47c96ccf2fc751615f2bc7c4c0e2e666c948ee50530e75ae5afd47fa94fdd"
+          },
+          {
+            "wall_s": 7.345339633058757,
+            "wall_tps": 139.4081214967026,
+            "tokens": 1024,
+            "ttft_s": 0.08061096607707441,
+            "stream_tps": 140.8182817792574,
+            "verify_rounds": 428,
+            "accepted_per_round": 2.392523364485981,
+            "correct_drafts_histogram": [
+              133,
+              110,
+              70,
+              115
+            ],
+            "num_retractions": 0,
+            "output_hash": "6517011955b13793db15e4cbac45ad2c399a1682f11dfddf2537d10afe01bb9c"
+          }
+        ]
+      }
+    },
+    "candidate-before-functional": {
+      "settings": {
+        "context_length": 131072,
+        "max_total_tokens": 131072,
+        "kv_cache_dtype": "fp8_e4m3",
+        "mamba_ssm_dtype": "float32",
+        "speculative_adaptive": true,
+        "enable_linear_replayssm_spec": true,
+        "disable_cuda_graph": false,
+        "speculative_accept_threshold_single": 1.0,
+        "speculative_accept_threshold_acc": 1.0,
+        "speculative_num_steps": 3,
+        "speculative_num_draft_tokens": 4,
+        "served_model_name": "Qwen3.8-Flash-Next-NVFP4-SSD-Stream"
+      },
+      "measurements": {
+        "list": [
+          {
+            "wall_s": 6.825131318066269,
+            "wall_tps": 150.0337432760378,
+            "tokens": 1024,
+            "ttft_s": 0.0784379430115223,
+            "stream_tps": 151.6315714280871,
+            "verify_rounds": 400,
+            "accepted_per_round": 2.56,
+            "correct_drafts_histogram": [
+              101,
+              114,
+              46,
+              139
+            ],
+            "num_retractions": 0,
+            "output_hash": "e6b940ee0744a7ea08f6ef2e92b62888da7253f13af95510aee44d81f721625c"
+          },
+          {
+            "wall_s": 6.73445032001473,
+            "wall_tps": 152.0539838205771,
+            "tokens": 1024,
+            "ttft_s": 0.08204007218591869,
+            "stream_tps": 153.77982452373945,
+            "verify_rounds": 388,
+            "accepted_per_round": 2.6391752577319587,
+            "correct_drafts_histogram": [
+              93,
+              104,
+              49,
+              140,
+              0,
+              0,
+              1,
+              1
+            ],
+            "num_retractions": 0,
+            "output_hash": "f7cae44d0bbbba47859eb18f83b79bd6697207876f9dbd74f3152e3549ff5661"
+          },
+          {
+            "wall_s": 6.76441250089556,
+            "wall_tps": 151.38047832896495,
+            "tokens": 1024,
+            "ttft_s": 0.16068060090765357,
+            "stream_tps": 154.9136164100343,
+            "verify_rounds": 375,
+            "accepted_per_round": 2.7306666666666666,
+            "correct_drafts_histogram": [
+              93,
+              90,
+              48,
+              131,
+              3,
+              3,
+              6,
+              1
+            ],
+            "num_retractions": 0,
+            "output_hash": "90d84f5d7e9555d069a54894176581cef000409ca0233b66c4154564ced8bb0e"
+          }
+        ],
+        "prose": [
+          {
+            "wall_s": 6.554810449015349,
+            "wall_tps": 156.22114597590283,
+            "tokens": 1024,
+            "ttft_s": 0.33849408593960106,
+            "stream_tps": 164.56801948552595,
+            "verify_rounds": 342,
+            "accepted_per_round": 2.9941520467836256,
+            "correct_drafts_histogram": [
+              69,
+              64,
+              69,
+              117,
+              8,
+              2,
+              3,
+              10
+            ],
+            "num_retractions": 0,
+            "output_hash": "f6cb80290b622522d94a2dfd0be10d2e433d4366507576c0a770f05f2b43b085"
+          },
+          {
+            "wall_s": 6.483014598023146,
+            "wall_tps": 157.95120996831417,
+            "tokens": 1024,
+            "ttft_s": 0.07289807801134884,
+            "stream_tps": 159.59255782217753,
+            "verify_rounds": 333,
+            "accepted_per_round": 3.075075075075075,
+            "correct_drafts_histogram": [
+              67,
+              71,
+              55,
+              100,
+              14,
+              9,
+              11,
+              6
+            ],
+            "num_retractions": 0,
+            "output_hash": "1a0f9d54c55779fa973a435c34edf79a5b72800b37916196b62634b7672a91b9"
+          },
+          {
+            "wall_s": 6.63154476787895,
+            "wall_tps": 154.4134942675685,
+            "tokens": 1024,
+            "ttft_s": 0.0706043909303844,
+            "stream_tps": 155.92359670147852,
+            "verify_rounds": 380,
+            "accepted_per_round": 2.694736842105263,
+            "correct_drafts_histogram": [
+              98,
+              75,
+              65,
+              134,
+              5,
+              1,
+              0,
+              2
+            ],
+            "num_retractions": 0,
+            "output_hash": "4f3a2190f5b5c4a96e066f40e7db777b0b9b05364f7ac134be9ed1ffcb518024"
+          }
+        ],
+        "code": [
+          {
+            "wall_s": 4.764685258967802,
+            "wall_tps": 214.91451047531194,
+            "tokens": 1024,
+            "ttft_s": 0.08319826796650887,
+            "stream_tps": 218.52200634286362,
+            "verify_rounds": 198,
+            "accepted_per_round": 5.171717171717172,
+            "correct_drafts_histogram": [
+              19,
+              22,
+              19,
+              22,
+              15,
+              21,
+              21,
+              59
+            ],
+            "num_retractions": 0,
+            "output_hash": "be3571eb6e0cb0d5d8ed81cb554b3c4ff4e489954dbfd0c3230832378490620e"
+          },
+          {
+            "wall_s": 4.9495841360185295,
+            "wall_tps": 206.88606797251268,
+            "tokens": 1024,
+            "ttft_s": 0.0823298271279782,
+            "stream_tps": 210.18185113301536,
+            "verify_rounds": 203,
+            "accepted_per_round": 5.044334975369458,
+            "correct_drafts_histogram": [
+              16,
+              26,
+              31,
+              15,
+              20,
+              23,
+              12,
+              60
+            ],
+            "num_retractions": 0,
+            "output_hash": "c9255897f0e01746eb28cd2d1037e3983f2f12fc64102c3d3882f2f4db413c67"
+          },
+          {
+            "wall_s": 4.495021793060005,
+            "wall_tps": 227.80757183001504,
+            "tokens": 1024,
+            "ttft_s": 0.08925095503218472,
+            "stream_tps": 232.1975783198107,
+            "verify_rounds": 184,
+            "accepted_per_round": 5.565217391304348,
+            "correct_drafts_histogram": [
+              9,
+              21,
+              23,
+              10,
+              17,
+              19,
+              11,
+              74
+            ],
+            "num_retractions": 0,
+            "output_hash": "4b1914996f1a58dca91d2662f2e3dc92cc189206860854de099ed166a58b9ef0"
+          }
+        ],
+        "reasoning": [
+          {
+            "wall_s": 8.208695994922891,
+            "wall_tps": 124.74575750318294,
+            "tokens": 1024,
+            "ttft_s": 0.35894374712370336,
+            "stream_tps": 130.32331840351088,
+            "verify_rounds": 459,
+            "accepted_per_round": 2.2309368191721135,
+            "correct_drafts_histogram": [
+              172,
+              122,
+              63,
+              97,
+              2,
+              2,
+              0,
+              1
+            ],
+            "num_retractions": 0,
+            "output_hash": "74d3a597747b2701cc362ff5bd7a4045cad06658018b0130aa897b30114963d5"
+          },
+          {
+            "wall_s": 7.158055210951716,
+            "wall_tps": 143.05561634021703,
+            "tokens": 1024,
+            "ttft_s": 0.07909997901879251,
+            "stream_tps": 144.51355690474517,
+            "verify_rounds": 414,
+            "accepted_per_round": 2.473429951690821,
+            "correct_drafts_histogram": [
+              138,
+              87,
+              67,
+              114,
+              2,
+              2,
+              0,
+              4
+            ],
+            "num_retractions": 0,
+            "output_hash": "5875c2538f5bb455b6dab3126566e04d9a22a18728c819c98b18defcc9d1f756"
+          },
+          {
+            "wall_s": 7.383238238980994,
+            "wall_tps": 138.6925312247988,
+            "tokens": 1024,
+            "ttft_s": 0.08023893507197499,
+            "stream_tps": 140.0802619874799,
+            "verify_rounds": 428,
+            "accepted_per_round": 2.392523364485981,
+            "correct_drafts_histogram": [
+              141,
+              111,
+              60,
+              109,
+              2,
+              2,
+              0,
+              3
+            ],
+            "num_retractions": 0,
+            "output_hash": "9e038c4f0f9a4228600f1e43593ab9acf3cba0f6d5d1b0cc789bff0f4a77f8af"
+          }
+        ]
+      }
+    },
+    "candidate-after-functional": {
+      "settings": {
+        "context_length": 131072,
+        "max_total_tokens": 131072,
+        "kv_cache_dtype": "fp8_e4m3",
+        "mamba_ssm_dtype": "float32",
+        "speculative_adaptive": true,
+        "enable_linear_replayssm_spec": true,
+        "disable_cuda_graph": false,
+        "speculative_accept_threshold_single": 1.0,
+        "speculative_accept_threshold_acc": 1.0,
+        "speculative_num_steps": 3,
+        "speculative_num_draft_tokens": 4,
+        "served_model_name": "Qwen3.8-Flash-Next-NVFP4-SSD-Stream"
+      },
+      "measurements": {
+        "list": [
+          {
+            "wall_s": 6.734896901063621,
+            "wall_tps": 152.04390134588147,
+            "tokens": 1024,
+            "ttft_s": 0.08516770787537098,
+            "stream_tps": 153.84218932272358,
+            "verify_rounds": 313,
+            "accepted_per_round": 3.2715654952076676,
+            "correct_drafts_histogram": [
+              74,
+              78,
+              37,
+              60,
+              3,
+              20,
+              20,
+              21
+            ],
+            "num_retractions": 0,
+            "output_hash": "80481b1e2e30e7560679a1f7a444f1217e40f43f7170498d90d8cd028d8fb4f7"
+          },
+          {
+            "wall_s": 6.406711448915303,
+            "wall_tps": 159.83238954415057,
+            "tokens": 1024,
+            "ttft_s": 0.08682062500156462,
+            "stream_tps": 161.87091158033908,
+            "verify_rounds": 372,
+            "accepted_per_round": 2.752688172043011,
+            "correct_drafts_histogram": [
+              78,
+              94,
+              51,
+              145,
+              1,
+              2,
+              0,
+              1
+            ],
+            "num_retractions": 0,
+            "output_hash": "a975d2b07e3d47b56d923ae22ce2653ded47a5556ad5a2c992b39ae3dd338866"
+          },
+          {
+            "wall_s": 6.988181984983385,
+            "wall_tps": 146.53310434680026,
+            "tokens": 1024,
+            "ttft_s": 0.0807115628849715,
+            "stream_tps": 148.10157348419557,
+            "verify_rounds": 413,
+            "accepted_per_round": 2.4794188861985473,
+            "correct_drafts_histogram": [
+              116,
+              117,
+              46,
+              134
+            ],
+            "num_retractions": 0,
+            "output_hash": "5d979675e0e9c6bbbe2f8dea2b4ef480d7a85849baad788ed223558d707e4a99"
+          }
+        ],
+        "prose": [
+          {
+            "wall_s": 6.69295370997861,
+            "wall_tps": 152.99672526844245,
+            "tokens": 1024,
+            "ttft_s": 0.0754154808819294,
+            "stream_tps": 154.59018792002502,
+            "verify_rounds": 388,
+            "accepted_per_round": 2.6391752577319587,
+            "correct_drafts_histogram": [
+              94,
+              87,
+              81,
+              122,
+              2,
+              0,
+              1,
+              1
+            ],
+            "num_retractions": 0,
+            "output_hash": "2780d6769892cb8c61f2ef576706a1a491b41f7d57bbb0bd17c6f32b1bb88932"
+          },
+          {
+            "wall_s": 6.5393717309925705,
+            "wall_tps": 156.58996645608545,
+            "tokens": 1024,
+            "ttft_s": 0.07204628689214587,
+            "stream_tps": 158.18062359767816,
+            "verify_rounds": 371,
+            "accepted_per_round": 2.7601078167115904,
+            "correct_drafts_histogram": [
+              92,
+              78,
+              54,
+              135,
+              6,
+              2,
+              0,
+              4
+            ],
+            "num_retractions": 0,
+            "output_hash": "4b8b25d2d20bf801d4a4e34a26cdf2cd02d5e923e2587000f148621a246a8029"
+          },
+          {
+            "wall_s": 6.5828776268754154,
+            "wall_tps": 155.5550715114911,
+            "tokens": 1024,
+            "ttft_s": 0.07153655285947025,
+            "stream_tps": 157.1114198467795,
+            "verify_rounds": 382,
+            "accepted_per_round": 2.680628272251309,
+            "correct_drafts_histogram": [
+              94,
+              96,
+              49,
+              136,
+              3,
+              0,
+              1,
+              3
+            ],
+            "num_retractions": 0,
+            "output_hash": "9a7d81e9fd086a8902f8ce958d796e21b84e1f60bc00811602655b9e0b873370"
+          }
+        ],
+        "code": [
+          {
+            "wall_s": 4.835551871918142,
+            "wall_tps": 211.76486720093956,
+            "tokens": 1024,
+            "ttft_s": 0.08486615377478302,
+            "stream_tps": 215.33904911571852,
+            "verify_rounds": 199,
+            "accepted_per_round": 5.1457286432160805,
+            "correct_drafts_histogram": [
+              14,
+              28,
+              23,
+              23,
+              18,
+              14,
+              12,
+              67
+            ],
+            "num_retractions": 0,
+            "output_hash": "e2041ad9e63fa35ca5e2a6ca1ed0582e363218aeda6ca9953a5335bbee154956"
+          },
+          {
+            "wall_s": 4.484565444057807,
+            "wall_tps": 228.33873488385208,
+            "tokens": 1024,
+            "ttft_s": 0.0870524300262332,
+            "stream_tps": 232.6334712316789,
+            "verify_rounds": 184,
+            "accepted_per_round": 5.565217391304348,
+            "correct_drafts_histogram": [
+              11,
+              14,
+              20,
+              18,
+              19,
+              19,
+              17,
+              66
+            ],
+            "num_retractions": 0,
+            "output_hash": "db3a3b5d85e55afa5331500e9a6197967077de786173efcd18208ed5bec15aa2"
+          },
+          {
+            "wall_s": 4.649099379079416,
+            "wall_tps": 220.25771369997378,
+            "tokens": 1024,
+            "ttft_s": 0.08499800716526806,
+            "stream_tps": 224.1422940083746,
+            "verify_rounds": 191,
+            "accepted_per_round": 5.361256544502618,
+            "correct_drafts_histogram": [
+              14,
+              21,
+              19,
+              18,
+              20,
+              16,
+              22,
+              61
+            ],
+            "num_retractions": 0,
+            "output_hash": "c08a44767fb09a96466590126f802d273d8bd0cb33be5484648fd4d56418d502"
+          }
+        ],
+        "reasoning": [
+          {
+            "wall_s": 7.61411015316844,
+            "wall_tps": 134.48715337719216,
+            "tokens": 1024,
+            "ttft_s": 0.08089374820701778,
+            "stream_tps": 135.79957210005816,
+            "verify_rounds": 437,
+            "accepted_per_round": 2.34324942791762,
+            "correct_drafts_histogram": [
+              151,
+              105,
+              70,
+              107,
+              2,
+              1,
+              0,
+              1
+            ],
+            "num_retractions": 0,
+            "output_hash": "2534a0026f8d86f5fb53f3d6bac201fb91431d2e1963ef2c91c528416c1d0f8a"
+          },
+          {
+            "wall_s": 7.682658517034724,
+            "wall_tps": 133.2871944951724,
+            "tokens": 1024,
+            "ttft_s": 0.08223108993843198,
+            "stream_tps": 134.59839940205984,
+            "verify_rounds": 445,
+            "accepted_per_round": 2.301123595505618,
+            "correct_drafts_histogram": [
+              155,
+              118,
+              65,
+              103,
+              1,
+              1,
+              1,
+              1
+            ],
+            "num_retractions": 0,
+            "output_hash": "559c07eb0125843ed323a9f5ba25fa7808807dcee15474d5eb7885739827d250"
+          },
+          {
+            "wall_s": 7.2241790851112455,
+            "wall_tps": 141.74620921433475,
+            "tokens": 1024,
+            "ttft_s": 0.08812643517740071,
+            "stream_tps": 143.35791387196113,
+            "verify_rounds": 419,
+            "accepted_per_round": 2.443914081145585,
+            "correct_drafts_histogram": [
+              131,
+              107,
+              65,
+              107,
+              3,
+              2,
+              1,
+              3
+            ],
+            "num_retractions": 0,
+            "output_hash": "4e1bbc291907c6b926c84bfb0f6007b7a02951af2afd644fb1d70200cdc47140"
+          }
+        ]
+      }
+    },
+    "control-after": {
+      "settings": {
+        "context_length": 131072,
+        "max_total_tokens": 131072,
+        "kv_cache_dtype": "fp8_e4m3",
+        "mamba_ssm_dtype": "float32",
+        "speculative_adaptive": false,
+        "enable_linear_replayssm_spec": false,
+        "disable_cuda_graph": false,
+        "speculative_accept_threshold_single": 1.0,
+        "speculative_accept_threshold_acc": 1.0,
+        "speculative_num_steps": 3,
+        "speculative_num_draft_tokens": 4,
+        "served_model_name": "Qwen3.8-Flash-Next-NVFP4-SSD-Stream"
+      },
+      "measurements": {
+        "list": [
+          {
+            "wall_s": 6.911065361928195,
+            "wall_tps": 148.16818339485403,
+            "tokens": 1024,
+            "ttft_s": 0.07886364706791937,
+            "stream_tps": 149.73295461638548,
+            "verify_rounds": 398,
+            "accepted_per_round": 2.5728643216080402,
+            "correct_drafts_histogram": [
+              107,
+              102,
+              42,
+              147
+            ],
+            "num_retractions": 0,
+            "output_hash": "e41c181b44f9f47adc83b33e99f5551704ebaa6c15061889352584957406e945"
+          },
+          {
+            "wall_s": 6.6665928738657385,
+            "wall_tps": 153.6017002049528,
+            "tokens": 1024,
+            "ttft_s": 0.08413466392084956,
+            "stream_tps": 155.41394249194087,
+            "verify_rounds": 390,
+            "accepted_per_round": 2.6256410256410256,
+            "correct_drafts_histogram": [
+              88,
+              108,
+              57,
+              137
+            ],
+            "num_retractions": 0,
+            "output_hash": "3faf3cec3f96accb6940262342c39ac7e6b9b855db460d4da52510193cb78a98"
+          },
+          {
+            "wall_s": 6.936120582045987,
+            "wall_tps": 147.63295820585992,
+            "tokens": 1024,
+            "ttft_s": 0.18367009004577994,
+            "stream_tps": 151.50139448092804,
+            "verify_rounds": 400,
+            "accepted_per_round": 2.56,
+            "correct_drafts_histogram": [
+              98,
+              112,
+              58,
+              132
+            ],
+            "num_retractions": 0,
+            "output_hash": "1e571b3fa397d4b18aafac2ddcf90cd683f229ed792df8265f2ac7df9a780747"
+          }
+        ],
+        "prose": [
+          {
+            "wall_s": 5.723131139064208,
+            "wall_tps": 178.92303620486928,
+            "tokens": 1024,
+            "ttft_s": 0.10675381403416395,
+            "stream_tps": 182.14715943315352,
+            "verify_rounds": 334,
+            "accepted_per_round": 3.065868263473054,
+            "correct_drafts_histogram": [
+              59,
+              44,
+              48,
+              183
+            ],
+            "num_retractions": 0,
+            "output_hash": "95f636623a3d239e168ba74b6da74497c07f47df57075a8deae1c98415e9de9c"
+          },
+          {
+            "wall_s": 6.18413480813615,
+            "wall_tps": 165.58500611157046,
+            "tokens": 1024,
+            "ttft_s": 0.07802436011843383,
+            "stream_tps": 167.5381241884857,
+            "verify_rounds": 361,
+            "accepted_per_round": 2.8365650969529086,
+            "correct_drafts_histogram": [
+              77,
+              66,
+              56,
+              162
+            ],
+            "num_retractions": 0,
+            "output_hash": "301d5c521e8390276444ae3f82399023b4bfd0268b3c596ff7d2c8b3f596bc6f"
+          },
+          {
+            "wall_s": 6.047272392082959,
+            "wall_tps": 169.33254095525987,
+            "tokens": 1024,
+            "ttft_s": 0.06943443696945906,
+            "stream_tps": 171.1335405869937,
+            "verify_rounds": 354,
+            "accepted_per_round": 2.8926553672316384,
+            "correct_drafts_histogram": [
+              74,
+              63,
+              44,
+              173
+            ],
+            "num_retractions": 0,
+            "output_hash": "eaf7761b29b72d5a141ebea37ed2e44d1dfbc46b692737fb6df037af3df19687"
+          }
+        ],
+        "code": [
+          {
+            "wall_s": 4.842627964913845,
+            "wall_tps": 211.45543440858108,
+            "tokens": 1024,
+            "ttft_s": 0.07884153490886092,
+            "stream_tps": 214.74668248120685,
+            "verify_rounds": 286,
+            "accepted_per_round": 3.5804195804195804,
+            "correct_drafts_histogram": [
+              18,
+              23,
+              18,
+              227
+            ],
+            "num_retractions": 0,
+            "output_hash": "10a4d398b862779f99138e9caa26b5b7d5fadf14dd38b5eef50a2f80ce61adf2"
+          },
+          {
+            "wall_s": 5.1346112778410316,
+            "wall_tps": 199.43087111953,
+            "tokens": 1024,
+            "ttft_s": 0.0770763298496604,
+            "stream_tps": 202.2743298541983,
+            "verify_rounds": 303,
+            "accepted_per_round": 3.3795379537953796,
+            "correct_drafts_histogram": [
+              30,
+              29,
+              40,
+              204
+            ],
+            "num_retractions": 0,
+            "output_hash": "51ac761e94b4321b5571442c2064731f87d5946b7c8744fbaf1aab05ddfdbd51"
+          },
+          {
+            "wall_s": 4.787421494955197,
+            "wall_tps": 213.89384683990167,
+            "tokens": 1024,
+            "ttft_s": 0.0774821201339364,
+            "stream_tps": 217.20196421933272,
+            "verify_rounds": 283,
+            "accepted_per_round": 3.618374558303887,
+            "correct_drafts_histogram": [
+              11,
+              23,
+              29,
+              220
+            ],
+            "num_retractions": 0,
+            "output_hash": "07bbe3a4c02f24aa016839912fbff3ceac289c6ecbdd92cecc1c6e3d7d84e316"
+          }
+        ],
+        "reasoning": [
+          {
+            "wall_s": 8.004782169125974,
+            "wall_tps": 127.92353100494282,
+            "tokens": 1024,
+            "ttft_s": 0.08466559811495245,
+            "stream_tps": 129.16545957427599,
+            "verify_rounds": 463,
+            "accepted_per_round": 2.2116630669546438,
+            "correct_drafts_histogram": [
+              186,
+              105,
+              59,
+              113
+            ],
+            "num_retractions": 0,
+            "output_hash": "b50bd7c14ea8ccfba7233093568f5172688de40b4cbcda9f3eadeeb09bcc3568"
+          },
+          {
+            "wall_s": 7.456884315935895,
+            "wall_tps": 137.32276868123577,
+            "tokens": 1024,
+            "ttft_s": 0.07936504087410867,
+            "stream_tps": 138.66522620246195,
+            "verify_rounds": 435,
+            "accepted_per_round": 2.354022988505747,
+            "correct_drafts_histogram": [
+              155,
+              90,
+              71,
+              119
+            ],
+            "num_retractions": 0,
+            "output_hash": "79c5e858bb51a0ce9d0e0a319c27f0ee15f6da326319519c7e37b58c77125ff5"
+          },
+          {
+            "wall_s": 7.668697363929823,
+            "wall_tps": 133.5298488653947,
+            "tokens": 1024,
+            "ttft_s": 0.08237606007605791,
+            "stream_tps": 134.84860579180355,
+            "verify_rounds": 448,
+            "accepted_per_round": 2.2857142857142856,
+            "correct_drafts_histogram": [
+              163,
+              107,
+              65,
+              113
+            ],
+            "num_retractions": 0,
+            "output_hash": "12c37d30d2210bc4b982b20d8e545e12e5cd79caa8c30b25373e5fa05ea4b1da"
+          }
+        ]
+      }
+    }
+  }
+}
